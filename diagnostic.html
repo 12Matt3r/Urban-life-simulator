@@ -1,0 +1,109 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Deploy Diagnostic</title>
+<style>
+  body{font:13px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#0e0f16; color:#e6e6f0; margin:0; padding:16px}
+  h1{font-size:16px;margin:0 0 12px}
+  code,pre{font:12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+  .ok{color:#87d37c}.warn{color:#ffcc66}.err{color:#ff6b6b}
+  .box{border:1px solid #333; border-radius:8px; padding:12px; margin:10px 0; background:#131420}
+  table{border-collapse:collapse;width:100%}
+  th,td{border-bottom:1px solid #222;padding:6px 8px;text-align:left;vertical-align:top}
+  th{color:#9aa4bf}
+  .muted{color:#9aa4bf}
+  .small{font-size:11px}
+  .pill{display:inline-block;padding:2px 6px;border-radius:999px;border:1px solid #444;margin-left:6px}
+</style>
+
+<h1>Deploy Diagnostic</h1>
+<div class="muted small">Checks file presence, MIME, and size. Then tries to load the app module.</div>
+
+<div id="results" class="box"><em>Running…</em></div>
+<div id="boot" class="box">
+  <div><strong>Boot log</strong> <span id="boot-status" class="pill">idle</span></div>
+  <pre id="boot-log" class="small"></pre>
+</div>
+
+<script>
+const expected = [
+  "index.html",
+  "life.css",                // was life.style → must be life.css
+  "env.js",
+  "life_script.js",
+  "systems/eventBus.js",
+  "systems/rng.js",
+  "systems/imageHook.js",
+  "systems/persistence.js",
+  "systems/radio.store.js",
+  "systems/autoPlanner.js",
+  "systems/narrativeEngine.js",
+  "systems/db.js",
+  "ui/radio.js",
+  "ui/characterCreation.js",
+  "ui/scenarioStart.js",
+  "ui/hud.js",
+  "ui/autoPlay.js",
+  "ui/communityHub.js",
+  "ui/communityStorylines.js",
+  "ui/communityRadio.js",
+  "modes/livingHell.js"
+];
+
+const resultsEl = document.getElementById('results');
+const logEl = document.getElementById('boot-log');
+const statusEl = document.getElementById('boot-status');
+function log(s){ logEl.textContent += s + "\n"; }
+function pill(t,cls){ return `<span class="pill ${cls||''}">${t}</span>`; }
+
+(async function run(){
+  const rows = [];
+  for (const path of expected) {
+    try {
+      const res = await fetch(path, { method: 'GET', cache: 'no-store' });
+      const ok = res.ok;
+      const len = res.headers.get('content-length');
+      const type = res.headers.get('content-type');
+      rows.push({
+        path,
+        status: ok ? `200 ${pill('OK','ok')}` : `${res.status} ${pill('FAIL','err')}`,
+        type: type || '(none)',
+        size: len ? `${(+len).toLocaleString()} bytes` : '(unknown)'
+      });
+    } catch (e) {
+      rows.push({ path, status: `ERR ${pill('X','err')}`, type: '-', size: '-' });
+    }
+  }
+
+  resultsEl.innerHTML = `
+    <table>
+      <thead><tr><th>Path</th><th>Status</th><th>MIME</th><th>Size</th></tr></thead>
+      <tbody>
+        ${rows.map(r => `<tr>
+          <td><code>${r.path}</code></td>
+          <td>${r.status}</td>
+          <td><code>${r.type}</code></td>
+          <td>${r.size}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <div class="small muted">Tip: <code>life.css</code> must serve as <code>text/css</code>; all JS must serve as <code>application/javascript</code>.</div>
+  `;
+
+  // Try loading your app module so we see errors here too
+  try {
+    statusEl.textContent = 'loading app…';
+    log('Importing life_script.js …');
+    await import('./life_script.js');
+    log('✓ life_script.js imported');
+    statusEl.textContent = 'life_script imported';
+  } catch (e) {
+    statusEl.textContent = 'import error';
+    log('IMPORT ERROR: ' + (e?.message || e));
+    log(String(e?.stack || ''));
+  }
+
+  window.addEventListener('error', e => log('window.error: ' + (e.message || e.error)));
+  window.addEventListener('unhandledrejection', e => log('unhandledrejection: ' + (e.reason && (e.reason.message||e.reason))));
+})();
+</script>
