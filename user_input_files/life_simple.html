@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Life Simulator</title>
+  <link rel="stylesheet" href="life.style">
+</head>
+<body>
+  <div id="app-container">
+    <!-- Character creation, scenario, and game UI mount here -->
+  </div>
+
+  <!-- Modals -->
+  <div id="community-hub" class="modal-overlay" hidden>
+    <div class="modal-content">
+      <div class="community-header">
+        <h2>Community Hub</h2>
+        <button id="community-close">X</button>
+      </div>
+      <div class="tabs">
+        <button data-tab="storylines">Storylines</button>
+        <button data-tab="radio">Radio</button>
+      </div>
+      <div id="community-content" class="community-body"></div>
+    </div>
+  </div>
+
+  <div id="glasshouse-modal" class="modal-overlay" hidden></div>
+
+  <!-- Scripts -->
+  <script type="module" src="life_script.js"></script>
+</body>
+</html>
