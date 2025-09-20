@@ -1,20 +1,20 @@
 // systems/db.js
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const url = window.__ENV__ && window.__ENV__.SUPABASE_URL;
-const key = window.__ENV__ && window.__ENV__.SUPABASE_ANON_KEY;
+const url = window.__ENV__?.SUPABASE_URL;
+const key = window.__ENV__?.SUPABASE_ANON_KEY;
 
 export const supabase = (url && key) ? createClient(url, key) : null;
 
 export async function ensureAuth() {
   if (!supabase) return null;
   const { data: { session } } = await supabase.auth.getSession();
-  if (session && session.user) return session.user;
+  if (session?.user) return session.user;
   try {
     const { data, error } = await supabase.auth.signInAnonymously();
     if (error) throw error;
-    return (data && data.user !== null && data.user !== undefined) ? data.user : null;
-  } catch (e) {
+    return data?.user ?? null;
+  } catch {
     return null;
   }
 }
@@ -49,10 +49,8 @@ export async function uploadTrackToStation({ stationId, title, artist, file }) {
   if (!supabase) throw new Error("Supabase not configured");
   const user = await ensureAuth();
   if (!user) throw new Error("No auth user");
-  const splitName = file.name.split(".");
-  const popped = splitName.pop();
-  const ext = (popped && popped.toLowerCase()) || "mp3";
-  const objectPath = user.id + '/' + Date.now() + '_' + sanitize(title) + '.' + ext;
+  const ext = file.name.split(".").pop()?.toLowerCase() || "mp3";
+  const objectPath = `${user.id}/${Date.now()}_${sanitize(title)}.${ext}`;
 
   const up = await supabase.storage.from("radio").upload(objectPath, file, { cacheControl: "3600", upsert: false });
   if (up.error) throw up.error;
@@ -79,10 +77,10 @@ export async function getLatestTrackPublicUrl(stationId) {
     .order('created_at', { ascending: false })
     .limit(1);
   if (error) { console.warn('list tracks error', error.message); return null; }
-  const filePath = data && data[0] && data[0].file_path;
+  const filePath = data?.[0]?.file_path;
   if (!filePath) return null;
   const { data: pub } = supabase.storage.from('radio').getPublicUrl(filePath);
-  return (pub && pub.publicUrl) || null;
+  return pub?.publicUrl || null;
 }
 
 /** Resolve a playable URL from an arbitrary user-provided URL.
@@ -96,16 +94,15 @@ export function resolveExternalAudio(url) {
   if (/\.(mp3|ogg|wav|m4a)(\?|#|$)/i.test(u)) return u; // <audio> can play this
   // YouTube
   if (/youtu\.be\/|youtube\.com\/watch\?v=/.test(u)) {
-    const shortMatch = u.match(/youtu\.be\/([^?&#]+)/);
-    const longMatch = u.match(/[?&]v=([^&#]+)/);
-    const id = (shortMatch && shortMatch[1]) || (longMatch && longMatch[1]) || '';
+    const id = (u.match(/youtu\.be\/([^?&#]+)/)?.[1]) ||
+               (u.match(/[?&]v=([^&#]+)/)?.[1]) || '';
     if (!id) return null;
-    return 'iframe:https://www.youtube.com/embed/' + id + '?autoplay=1&rel=0';
+    return `iframe:https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
   }
   // SoundCloud (use oEmbed player)
   if (/soundcloud\.com\//.test(u)) {
     const enc = encodeURIComponent(u);
-    return 'iframe:https://w.soundcloud.com/player/?url=' + enc + '&auto_play=true';
+    return `iframe:https://w.soundcloud.com/player/?url=${enc}&auto_play=true`;
   }
   // Fallback: try as audio anyway
   return u;

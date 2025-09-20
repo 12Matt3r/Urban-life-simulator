@@ -93,7 +93,7 @@
     const logEl = document.getElementById('sim-log');
     eventBus.subscribe('simlog.push', e => {
       const line = document.createElement('div');
-      line.textContent = "[" + new Date().toLocaleTimeString() + "] " + (e && e.text || "");
+      line.textContent = "[" + new Date().toLocaleTimeString() + "] " + (e?.text || "");
       logEl.appendChild(line);
       logEl.scrollTop = logEl.scrollHeight;
     });

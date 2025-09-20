@@ -45,7 +45,7 @@ export function mountCareerLogModal(containerId = 'career-log-modal') {
     if (!data.length) { listEl.innerHTML = `<p class="muted">No entries yet.</p>`; return; }
     listEl.innerHTML = data.map(e => {
       const when = new Date(e.ts).toLocaleString();
-      const tagStr = (e.tags && e.tags.length) ? '<span class="muted"> [' + e.tags.join(', ') + ']</span>' : '';
+      const tagStr = e.tags?.length ? `<span class="muted"> [${e.tags.join(', ')}]</span>` : '';
       return `<div style="margin-bottom:8px;">
         <strong>${when}</strong> — ${e.kind === 'role' ? 'Role' : 'District'}: ${escapeHtml(e.detail)} ${tagStr}
       </div>`;
@@ -57,7 +57,7 @@ export function mountCareerLogModal(containerId = 'career-log-modal') {
   closeBtn.onclick = () => { root.hidden = true; };
   clearBtn.onclick = () => { if (confirm('Clear career log?')) { clear(); } };
   exportBtn.onclick = () => {
-    const md = exportMarkdown((window && window.Life && window.Life.state && window.Life.state.name && window.Life.state.name()) || 'Player');
+    const md = exportMarkdown(window?.Life?.state?.name?.() || 'Player');
     const blob = new Blob([md], { type: 'text/markdown' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -77,8 +77,5 @@ export function openCareerLogModal() {
   if (!root) mountCareerLogModal();
   root.hidden = false;
   // trigger render once opened (in case of stale)
-  var filterEl = document.getElementById('cl-filter');
-  if (filterEl) {
-    filterEl.dispatchEvent(new Event('change'));
-  }
+  document.getElementById('cl-filter')?.dispatchEvent(new Event('change'));
 }

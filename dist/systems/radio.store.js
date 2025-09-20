@@ -9,13 +9,13 @@ export function getTrack(id) { return tracks.get(id); }
 
 export function registerStation(stationData) {
   const id = stationData.name.toLowerCase().replace(/\s/g, '_');
-  const newStation = Object.assign({ id: id, trackIds: [] }, stationData);
+  const newStation = { id, ...stationData, trackIds: [] };
   stations.set(id, newStation);
   return newStation;
 }
 export function addTrack(trackData) {
-  const id = 'track_' + (tracks.size + 1);
-  const newTrack = Object.assign({ id: id, votes: 0 }, trackData);
+  const id = `track_${tracks.size + 1}`;
+  const newTrack = { id, votes: 0, ...trackData };
   tracks.set(id, newTrack);
   if (trackData.stationId && stations.has(trackData.stationId)) {
     stations.get(trackData.stationId).trackIds.push(id);

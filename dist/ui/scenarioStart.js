@@ -51,9 +51,9 @@ export function mountScenarioStart(container, character, onComplete){
 
   districtEl.onchange = () => { district = districtEl.value; };
   container.querySelector('#reroll-scenario').onclick = generateScenario;
-  container.querySelector('#accept-scenario').onclick = function() {
+  container.querySelector('#accept-scenario').onclick = () => {
     if (!currentScenario) return;
-    onComplete(Object.assign({}, character, { district: district }), currentScenario);
+    onComplete({ ...character, district }, currentScenario);
   };
 
   generateScenario();

@@ -15,13 +15,12 @@ export function clear() {
   eventBus.publish('career.log.updated', entries());
 }
 
-export function exportMarkdown(characterName) {
-  if (characterName === void 0) { characterName = 'Player'; }
-  const lines = ['# ' + characterName + ' — Career Log', ''];
+export function exportMarkdown(characterName = 'Player') {
+  const lines = [`# ${characterName} — Career Log`, ''];
   for (const e of _log) {
     const when = new Date(e.ts).toLocaleString();
-    const tagStr = (e.tags && e.tags.length) ? '  _[' + e.tags.join(', ') + ']_' : '';
-    lines.push('- **' + when + '** — ' + (e.kind === 'role' ? 'Role' : 'District') + ': ' + e.detail + tagStr);
+    const tagStr = e.tags?.length ? `  _[${e.tags.join(', ')}]_` : '';
+    lines.push(`- **${when}** — ${e.kind === 'role' ? 'Role' : 'District'}: ${e.detail}${tagStr}`);
   }
   return lines.join('\n');
 }

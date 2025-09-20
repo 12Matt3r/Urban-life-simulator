@@ -30,7 +30,7 @@ export function suggestNextDistrict(current, roleTags = [], seed = Date.now()) {
   if (hasAny(tags, ['chef','food','stall']))                   boost.push('Canal Row');
   if (hasAny(tags, ['skate','bmx','street']))                  boost.push('Greyline District', 'Verdant Steps');
 
-  if (boost.length) pool = uniq(pool.concat(boost).concat(boost)); // duplicate boosts for weight
+  if (boost.length) pool = uniq([...pool, ...boost, ...boost]); // duplicate boosts for weight
   return rng.pick(pool.length ? pool : DEFAULTS);
 }
 

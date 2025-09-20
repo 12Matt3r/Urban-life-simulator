@@ -38,21 +38,21 @@ function mountWebSimRadio(container, eventBus) {
   `;
 
   // Event handlers
-  container.querySelector('#radio-tune').onclick = function() {
+  container.querySelector('#radio-tune').onclick = () => {
     const iframe = container.querySelector('#radio-websim-player');
-    if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.postMessage({ type: 'tune_in' }, 'https://websim.com');
+    if (iframe) {
+      iframe.contentWindow?.postMessage({ type: 'tune_in' }, 'https://websim.com');
     }
   };
 
-  container.querySelector('#radio-email').onclick = function() {
+  container.querySelector('#radio-email').onclick = () => {
     window.open('mailto:dj@urbansim.radio?subject=Song Request&body=Hey DJ, please play...');
   };
 
-  container.querySelector('#radio-schedule').onclick = function() {
+  container.querySelector('#radio-schedule').onclick = () => {
     const iframe = container.querySelector('#radio-websim-player');
-    if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.postMessage({ type: 'show_schedule' }, 'https://websim.com');
+    if (iframe) {
+      iframe.contentWindow?.postMessage({ type: 'show_schedule' }, 'https://websim.com');
     }
   };
 }

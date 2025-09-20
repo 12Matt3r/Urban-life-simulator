@@ -99,8 +99,8 @@ function pill(t,cls){ return `<span class="pill ${cls||''}">${t}</span>`; }
     statusEl.textContent = 'life_script imported';
   } catch (e) {
     statusEl.textContent = 'import error';
-    log('IMPORT ERROR: ' + (e && e.message || e));
-    log(String((e && e.stack) || ''));
+    log('IMPORT ERROR: ' + (e?.message || e));
+    log(String(e?.stack || ''));
   }
 
   window.addEventListener('error', e => log('window.error: ' + (e.message || e.error)));

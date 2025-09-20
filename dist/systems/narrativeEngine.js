@@ -33,7 +33,7 @@ function nextEventViaWebSim(ctx, timeoutMs = 20000) {
         character: ctx.character,
         history: (ctx.history || []).slice(-10),
         lastEvent: ctx.lastEvent || null,
-        rails: { maxDecisions: Math.max(2, Math.min(4, (ctx.rails && ctx.rails.maxDecisions !== null && ctx.rails.maxDecisions !== undefined) ? ctx.rails.maxDecisions : 3)) }
+        rails: { maxDecisions: Math.max(2, Math.min(4, ctx.rails?.maxDecisions ?? 3)) }
       });
     } catch (e) {
       cleanup(); return reject(e);
@@ -63,7 +63,7 @@ export function createNarrativeEngine({ mode = "websim" } = {}) {
     async nextEvent(ctx) {
       if (mode === "websim") {
         try { return await nextEventViaWebSim(ctx); }
-        catch (e) { console.warn("WebSim failed → local mock:", (e && e.message) || e); return await localMockNext(ctx); }
+        catch (e) { console.warn("WebSim failed → local mock:", e?.message || e); return await localMockNext(ctx); }
       }
       return await localMockNext(ctx);
     }

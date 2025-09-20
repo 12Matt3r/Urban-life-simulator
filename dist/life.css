@@ -221,3 +221,11 @@ input:focus, select:focus { border-color: var(--accent-cyan); }
   #autoplay-dock { width: auto; max-width: 90vw; }
   #sim-log-container { width: 90vw; height: 180px; }
 }
+
+/* --- Visual Ambiance --- */
+body[data-tod="evening"]  #scene-image{ filter: brightness(0.95) saturate(1.05) hue-rotate(-5deg); }
+body[data-tod="night"]    #scene-image{ filter: brightness(0.80) contrast(1.05); }
+body[data-tod="dawn"]     #scene-image{ filter: brightness(1.05) saturate(1.08); }
+body[data-weather="rain"] #scene-image{ filter: saturate(0.95); }
+body[data-weather="storm"]#scene-image{ filter: brightness(0.92) contrast(1.1); }
+body[data-weather="fog"]  #scene-image{ filter: brightness(1.06) contrast(0.9); }

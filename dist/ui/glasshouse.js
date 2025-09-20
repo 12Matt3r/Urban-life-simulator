@@ -24,7 +24,7 @@ export class GlassHouse {
       </style>
       <div class="modal-content glass-house-modal">
         <h2>Welcome to The Glass House</h2>
-        <p>${(this.character && this.character.name) || 'You'} are now on the broadcast.</p>
+        <p>${this.character?.name || 'You'} are now on the broadcast.</p>
         <p>Viewers can help or sabotage you...</p>
         <p><em>(Stub for sub-game loop)</em></p>
         <button id="gh-exit">Leave The Broadcast</button>

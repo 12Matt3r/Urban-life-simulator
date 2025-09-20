@@ -1,4 +1,6 @@
 // ui/hud.js
+import { mountShopModal } from './shop.js';
+
 export function mountHUD(container, character, eventBus){
   container.innerHTML = `
     <style>
@@ -34,7 +36,13 @@ export function mountHUD(container, character, eventBus){
           <button id="hud-community">Community</button>
           <button id="hud-glasshouse">Glass House</button>
           <button id="hud-careerlog">Career Log</button>
+          <button id="hud-shop">Shop</button>
         </div>
+      </div>
+
+      <div id="hud-extra" style="font-size:12px;color:#a0a0c0;display:flex;gap:12px;margin-top:4px;">
+        <span id="hud-time">🕒 --:--</span>
+        <span id="hud-weather">☀️ --</span>
       </div>
 
       <div class="hud-row">
@@ -77,9 +85,25 @@ export function mountHUD(container, character, eventBus){
   container.querySelector('#hud-community').onclick = () => eventBus.publish('hud.community');
   container.querySelector('#hud-glasshouse').onclick = () => eventBus.publish('hud.glasshouse');
   container.querySelector('#hud-careerlog').onclick = () => eventBus.publish('hud.careerlog');
+  container.querySelector('#hud-shop').onclick = () => mountShopModal();
 
   // quick selector: prompt with list + custom
   container.querySelector('#hud-district-change').onclick = () => eventBus.publish('ui.district.change.request');
+
+  // Time and weather display
+  eventBus.subscribe('hud.time.update', function(t){
+    var el = document.getElementById('hud-time');
+    if (!el) return;
+    var hh = String(t.hour).padStart ? String(t.hour).padStart(2,'0') : (t.hour<10?'0'+t.hour:t.hour);
+    var mm = String(t.minute).padStart ? String(t.minute).padStart(2,'0') : (t.minute<10?'0'+t.minute:t.minute);
+    el.textContent = '🕒 ' + hh + ':' + mm + '  (Day ' + t.day + ', ' + t.timeOfDay + ')';
+  });
+  eventBus.subscribe('hud.weather.update', function(w){
+    var el = document.getElementById('hud-weather');
+    if (!el) return;
+    var icon = (w.state==='rain'?'🌧️':w.state==='storm'?'⛈️':w.state==='fog'?'🌫️':w.state==='overcast'?'⛅':'☀️');
+    el.textContent = icon + ' ' + w.state + ', ' + w.temperatureC + '°C';
+  });
 
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 }

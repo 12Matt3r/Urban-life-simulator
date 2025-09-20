@@ -1,4 +1,6 @@
 import { eventBus } from './systems/eventBus.js';
+import { startClock, getTime } from './systems/time.js';
+import { initWeather, getWeather } from './systems/weather.js';
 import { mountCharacterCreation } from './ui/characterCreation.js';
 import { mountScenarioStart } from './ui/scenarioStart.js';
 import { mountHUD } from './ui/hud.js';
@@ -99,10 +101,31 @@ function startMainGame() {
   // Mount career log modal
   mountCareerLogModal();
 
+  // Start time and weather systems
+  startClock();
+  initWeather();
+
+  // reflect ambience to <body> attrs + HUD
+  eventBus.subscribe('time.tick', function(t){
+    try {
+      document.body.setAttribute('data-tod', t.timeOfDay);
+      eventBus.publish('hud.time.update', t);
+      // also nudge image ambience
+      eventBus.publish('image.ambience', { timeOfDay: t.timeOfDay });
+    } catch(e){}
+  });
+  eventBus.subscribe('weather.changed', function(w){
+    try {
+      document.body.setAttribute('data-weather', w.state);
+      eventBus.publish('hud.weather.update', w);
+      eventBus.publish('image.ambience', { weather: w.state, temperatureC: w.temperatureC });
+    } catch(e){}
+  });
+
   // Manual district change flow (simple prompt for now)
   eventBus.subscribe('ui.district.change.request', () => {
     const options = listDistricts();
-    const pick = prompt('Move to which district?\n\n- ' + options.join('\n- ') + '\n\nOr type a custom name:', (gameState.character && gameState.character.district) || options[0]);
+    const pick = prompt(`Move to which district?\n\n- ${options.join('\n- ')}\n\nOr type a custom name:`, gameState.character?.district || options[0]);
     if (!pick) return;
     changeDistrict(pick);
   });
@@ -115,10 +138,11 @@ async function nextEvent() {
   let ev;
   try {
     ev = await engine.nextEvent({
-      character: Object.assign({}, gameState.character, {
+      character: {
+        ...gameState.character,
         // include evolving role tags explicitly
-        roleTags: (gameState.character && gameState.character.roleTags) || []
-      }),
+        roleTags: gameState.character.roleTags || []
+      },
       history: gameState.narrativeHistory,
       lastEvent: gameState.currentEvent,
       rails: { maxDecisions: 3, tone: 'gritty-real' }
@@ -132,13 +156,17 @@ async function nextEvent() {
   renderEvent(ev);
 
   if (ev.imagePrompt) {
+    const time = getTime();
+    const weather = getWeather();
     eventBus.publish('image.request', {
       ambience: gameState.currentMoods.join(', ') || 'neutral',
-      locale: (gameState.character && gameState.character.district) || 'city',
+      locale: gameState.character?.district || 'city',
       prop: 'none',
       characterPose: 'idle',
-      attire: (gameState.character && gameState.character.archetype) || 'streetwear',
-      prompt: ev.imagePrompt
+      attire: gameState.character?.archetype || 'streetwear',
+      prompt: ev.imagePrompt,
+      timeOfDay: time.timeOfDay,
+      weather: weather.state
     });
   }
 }
@@ -170,7 +198,7 @@ function applyDecision(decision) {
   maybeDistrictDrift(decision);
 
   // 4) History
-  const imageUrl = (sceneImageEl && sceneImageEl.src) || '';
+  const imageUrl = sceneImageEl?.src || '';
   gameState.narrativeHistory.push({
     title: gameState.currentEvent.title,
     chosenDecisionText: decision.text,
@@ -222,9 +250,27 @@ function changeDistrict(name){
 // Add optional name getter for export convenience
 window.Life = {
   state: {
-    stats: function() { return (gameState.character && gameState.character.stats) || {}; },
-    name: function() { return (gameState.character && gameState.character.name) || 'Player'; }
+    stats: () => gameState.character?.stats || {},
+    name: () => gameState.character?.name || 'Player'
   }
 };
+
+// --- Venue open/close logic ---
+const venues = {
+  generalStore: { open: 8, close: 20, isOpen: true }
+};
+
+eventBus.subscribe('time.hourly', function(time) {
+  for (const venueId in venues) {
+    const venue = venues[venueId];
+    const wasOpen = venue.isOpen;
+    const isNowOpen = time.hour >= venue.open && time.hour < venue.close;
+
+    if (wasOpen !== isNowOpen) {
+      venue.isOpen = isNowOpen;
+      eventBus.publish('world.venue-status', { venueId: venueId, open: isNowOpen });
+    }
+  }
+});
 
 startCharacterCreation();
