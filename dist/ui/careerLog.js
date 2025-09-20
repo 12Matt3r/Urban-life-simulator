@@ -41,28 +41,27 @@ export function mountCareerLogModal(containerId = 'career-log-modal') {
 
   function render() {
     const filter = filterSel.value;
-    const data = entries().filter(function(e) { return filter === 'all' ? true : e.kind === filter; });
-    if (!data.length) { listEl.innerHTML = '<p class="muted">No entries yet.</p>'; return; }
-    listEl.innerHTML = data.map(function(e) {
+    const data = entries().filter(e => filter === 'all' ? true : e.kind === filter);
+    if (!data.length) { listEl.innerHTML = `<p class="muted">No entries yet.</p>`; return; }
+    listEl.innerHTML = data.map(e => {
       const when = new Date(e.ts).toLocaleString();
       const tagStr = (e.tags && e.tags.length) ? '<span class="muted"> [' + e.tags.join(', ') + ']</span>' : '';
-      return '<div style="margin-bottom:8px;">' +
-        '<strong>' + when + '</strong> — ' + (e.kind === 'role' ? 'Role' : 'District') + ': ' + escapeHtml(e.detail) + tagStr +
-      '</div>';
+      return `<div style="margin-bottom:8px;">
+        <strong>${when}</strong> — ${e.kind === 'role' ? 'Role' : 'District'}: ${escapeHtml(e.detail)} ${tagStr}
+      </div>`;
     }).join('');
   }
 
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-  closeBtn.onclick = function() { root.hidden = true; };
-  clearBtn.onclick = function() { if (confirm('Clear career log?')) { clear(); } };
-  exportBtn.onclick = function() {
-    const playerName = (window && window.Life && window.Life.state && window.Life.state.name && window.Life.state.name()) || 'Player';
-    const md = exportMarkdown(playerName);
+  closeBtn.onclick = () => { root.hidden = true; };
+  clearBtn.onclick = () => { if (confirm('Clear career log?')) { clear(); } };
+  exportBtn.onclick = () => {
+    const md = exportMarkdown((window && window.Life && window.Life.state && window.Life.state.name && window.Life.state.name()) || 'Player');
     const blob = new Blob([md], { type: 'text/markdown' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'career_log_' + Date.now() + '.md';
+    a.download = `career_log_${Date.now()}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -78,7 +77,7 @@ export function openCareerLogModal() {
   if (!root) mountCareerLogModal();
   root.hidden = false;
   // trigger render once opened (in case of stale)
-  const filterEl = document.getElementById('cl-filter');
+  var filterEl = document.getElementById('cl-filter');
   if (filterEl) {
     filterEl.dispatchEvent(new Event('change'));
   }

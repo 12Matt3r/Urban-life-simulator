@@ -19,13 +19,7 @@ export function mountHUD(container, character, eventBus){
 
     <div class="hud">
       <div class="hud-top">
-        <div class="hud-char-info">
-          <strong id="hud-name">${character.name}</strong>
-          <div class="wanted-wrap" style="margin-top:4px;">
-            <span class="wanted-label">Wanted:</span>
-            <span id="hud-wanted" class="wanted-stars"></span>
-          </div>
-        </div>
+        <div class="hud-char-info"><strong id="hud-name">${character.name}</strong></div>
         <div id="hud-stats" class="hud-stats">
           ${Object.entries(character.stats).map(([k,v])=>`
             <div class="hud-stat" id="hud-stat-${k}">
@@ -62,35 +56,11 @@ export function mountHUD(container, character, eventBus){
   const districtEl = container.querySelector('#hud-district');
   const rolesEl = container.querySelector('#hud-roles');
 
-  function wantedLevelFromHeat(heat) {
-    var h = Number(heat || 0);
-    if (h >= 95) return 5;
-    if (h >= 70) return 4;
-    if (h >= 45) return 3;
-    if (h >= 25) return 2;
-    if (h >= 10) return 1;
-    return 0;
-  }
-
-  function renderWantedStars(level) {
-    var el = container.querySelector('#hud-wanted');
-    if (!el) return;
-    var i, html = '';
-    for (i=1;i<=5;i++) {
-      html += '<span class="' + (i<=level ? 'on' : 'off') + '">★</span>';
-    }
-    el.innerHTML = html;
-  }
-
-  // Initial render
-  renderWantedStars(wantedLevelFromHeat(character.stats.heat));
-
-  eventBus.subscribe('character.stats.updated', function(char){
-    Object.entries(char.stats).forEach(function([k,v]){
-      const el = statsContainer.querySelector('#hud-stat-' + k + ' strong');
+  eventBus.subscribe('character.stats.updated', (char)=>{
+    Object.entries(char.stats).forEach(([k,v])=>{
+      const el = statsContainer.querySelector(`#hud-stat-${k} strong`);
       if (el) el.textContent = v;
     });
-    renderWantedStars(wantedLevelFromHeat(char.stats.heat));
   });
 
   eventBus.subscribe('career.tags.updated', (tags = [])=>{

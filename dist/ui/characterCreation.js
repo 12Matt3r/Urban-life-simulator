@@ -110,16 +110,10 @@ export function mountCharacterCreation(container, onComplete){
     return 5 + Math.floor(rng.random()*11);
   }
 
-  const abilityTooltips = {
-    strength: 'Strength', dexterity: 'Dexterity', constitution: 'Constitution',
-    intelligence: 'Intelligence', wisdom: 'Wisdom', charisma: 'Charisma',
-    heat: 'Police Attention', money: 'Money', health: 'Health', reputation: 'Reputation'
-  };
-
   function renderAbilities(){
     abilGrid.innerHTML = ABILITIES.map(n=>{
       const v = rollAbility(n);
-      return `<div class="ability-display" data-ability="${n}" data-value="${v}" title="${abilityTooltips[n] || n}">
+      return `<div class="ability-display" data-ability="${n}" data-value="${v}">
         <strong>${n.slice(0,3).toUpperCase()}</strong><span>${v}</span>
       </div>`;
     }).join('');
@@ -127,7 +121,6 @@ export function mountCharacterCreation(container, onComplete){
 
   function validate(){
     createBtn.disabled = !(nameInput.value.trim() && (customArchInput.value.trim()));
-    createBtn.textContent = 'Start Simulation';
   }
 
   nameInput.oninput = validate;

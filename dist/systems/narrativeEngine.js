@@ -11,12 +11,11 @@ function askWebSimNarrator(payload) {
   frame.contentWindow.postMessage({ type: "requestEvent", payload }, NARRATOR_IFRAME_ORIGIN);
 }
 
-function nextEventViaWebSim(ctx, timeoutMs) {
-  if (timeoutMs === void 0) { timeoutMs = 20000; }
-  return new Promise(function(resolve, reject) {
+function nextEventViaWebSim(ctx, timeoutMs = 20000) {
+  return new Promise((resolve, reject) => {
     let done = false;
 
-    const onMsg = function(ev) {
+    const onMsg = (ev) => {
       if (ev.origin !== NARRATOR_IFRAME_ORIGIN) return;
       const msg = ev.data || {};
       if (msg.type === "narration") {
@@ -26,23 +25,21 @@ function nextEventViaWebSim(ctx, timeoutMs) {
         cleanup(); done = true; return reject(new Error(msg.error));
       }
     };
-    const cleanup = function() { window.removeEventListener("message", onMsg); };
+    const cleanup = () => window.removeEventListener("message", onMsg);
 
     window.addEventListener("message", onMsg);
     try {
-      const maxDecisionsRaw = ctx.rails && ctx.rails.maxDecisions;
-      const maxDecisions = (maxDecisionsRaw !== null && maxDecisionsRaw !== undefined) ? maxDecisionsRaw : 3;
       askWebSimNarrator({
         character: ctx.character,
         history: (ctx.history || []).slice(-10),
         lastEvent: ctx.lastEvent || null,
-        rails: { maxDecisions: Math.max(2, Math.min(4, maxDecisions)) }
+        rails: { maxDecisions: Math.max(2, Math.min(4, (ctx.rails && ctx.rails.maxDecisions !== null && ctx.rails.maxDecisions !== undefined) ? ctx.rails.maxDecisions : 3)) }
       });
     } catch (e) {
       cleanup(); return reject(e);
     }
 
-    setTimeout(function() { if (!done) { cleanup(); reject(new Error("websim_timeout")); } }, timeoutMs);
+    setTimeout(() => { if (!done) { cleanup(); reject(new Error("websim_timeout")); } }, timeoutMs);
   });
 }
 
@@ -60,9 +57,7 @@ function localMockNext(ctx) {
   });
 }
 
-export function createNarrativeEngine(options) {
-  if (options === void 0) { options = {}; }
-  const mode = options.mode || "websim";
+export function createNarrativeEngine({ mode = "websim" } = {}) {
   return {
     mode,
     async nextEvent(ctx) {

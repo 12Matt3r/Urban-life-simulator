@@ -8,25 +8,27 @@ let currentMoods=[];
 const SPEED_MS={ '1x':1000,'2x':500,'4x':250,'max':0 };
 const clamp01=v=>Math.max(0,Math.min(1,Number(v)));
 
-export function start(config={}, eventBus=defaultBus){
+export function start(config, eventBus){
+  if (config === void 0) { config = {}; }
+  if (eventBus === void 0) { eventBus = defaultBus; }
   stop();
   bus = eventBus||defaultBus;
   cfg = {
     seed:Number(config.seed)||1,
-    risk:clamp01((config.risk??50)/100),
-    aggression:clamp01((config.aggression??50)/100),
-    chaos:clamp01((config.chaos??25)/100),
+    risk:clamp01(((config.risk !== null && config.risk !== undefined) ? config.risk : 50)/100),
+    aggression:clamp01(((config.aggression !== null && config.aggression !== undefined) ? config.aggression : 50)/100),
+    chaos:clamp01(((config.chaos !== null && config.chaos !== undefined) ? config.chaos : 25)/100),
     speed:config.speed||'1x',
-    imageEveryNTicks:Number(config.imageEveryNTicks??1)
+    imageEveryNTicks:Number((config.imageEveryNTicks !== null && config.imageEveryNTicks !== undefined) ? config.imageEveryNTicks : 1)
   };
   rng = createRNG(cfg.seed);
   state = { running:true, tick:0, lastDecisionId:null };
 
-  bus.subscribe('radio.change', ({moods})=>{
-    currentMoods = Array.isArray(moods) ? moods.slice(0,4) : [];
+  bus.subscribe('radio.change', function(payload) {
+    currentMoods = Array.isArray(payload.moods) ? payload.moods.slice(0,4) : [];
   });
 
-  bus.publish('simlog.push', { text:`Auto-Play: start (seed=${cfg.seed}, speed=${cfg.speed})` });
+  bus.publish('simlog.push', { text:'Auto-Play: start (seed=' + cfg.seed + ', speed=' + cfg.speed + ')' });
   loop();
 }
 
@@ -43,15 +45,16 @@ export function step(){
   loop(true);
 }
 
-function loop(single=false){
+function loop(single){
+  if (single === void 0) { single = false; }
   if (!state.running) return;
-  const decisions = (window.Life?.getAvailableDecisions?.()||[]).map(norm);
+  var decisions = (window.Life && window.Life.getAvailableDecisions ? window.Life.getAvailableDecisions() : []).map(norm);
   if (!decisions.length){
     bus.publish('simlog.push', { text:'Auto-Play: No decisions available' });
     return schedule(single);
   }
 
-  const scored = decisions.map(d=>({ d, s:score(d) }));
+  const scored = decisions.map(function(d) { return { d: d, s: score(d) }; });
   const chosen = softmaxPick(scored, tempFromChaos(cfg.chaos));
 
   if (chosen){
@@ -59,7 +62,7 @@ function loop(single=false){
     if (cfg.imageEveryNTicks===0 || state.tick % (cfg.imageEveryNTicks||1)===0){
       bus.publish('image.request', res.imagePayload || { mood: currentMoods[0]||'neutral' });
     }
-    bus.publish('simlog.push', { text: res.text || `Chosen: ${chosen.d.label||chosen.d.id}` });
+    bus.publish('simlog.push', { text: res.text || 'Chosen: ' + (chosen.d.label||chosen.d.id) });
   }
   state.tick++;
   schedule(single);
@@ -67,18 +70,17 @@ function loop(single=false){
 
 function schedule(single){
   if (single){ state.running=false; return; }
-  const delay = SPEED_MS[cfg.speed]??1000;
+  const delay = (SPEED_MS[cfg.speed] !== null && SPEED_MS[cfg.speed] !== undefined) ? SPEED_MS[cfg.speed] : 1000;
   timer = setTimeout(loop, delay);
 }
 
 function norm(d){
-  return {
-    ...d,
+  return Object.assign({}, d, {
     risk:num(d.risk,.3), aggression:num(d.aggression,.2),
     novelty:num(d.novelty,.1), goalAlignment:num(d.goalAlignment,.5),
     resourceRisk:num(d.resourceRisk,.2), heatSpike:num(d.heatSpike,.1),
     weight:num(d.weight,1)
-  };
+  });
 }
 function num(v,def){ v=Number(v); return Number.isFinite(v)?v:def; }
 function score(d){

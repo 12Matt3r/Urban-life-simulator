@@ -11,48 +11,6 @@ import { createNarrativeEngine } from './systems/narrativeEngine.js';
 import { createRNG } from './systems/rng.js';
 import { listDistricts, suggestNextDistrict, isValidDistrict } from './systems/districts.js';
 import { mountCareerLogModal, openCareerLogModal } from './ui/careerLog.js';
-import * as Objectives from './systems/objectives.js';
-
-function inferObjectivesFromRole(character) {
-  var role = (character && (character.role || character.archetype) || '').toLowerCase();
-  var out = [];
-  function add(s, soft) { out.push({ text: s, soft: !!soft }); }
-
-  if (/dj|performer|musician|nightlife/.test(role)) {
-    add('Book a headline set in a prime district', false);
-    add('Keep HEAT under 40 while promoting gigs', true);
-    add('Acquire premium gear and a reliable vehicle', true);
-  } else if (/bank|launder/.test(role)) {
-    add('Establish a clean front business', false);
-    add('Move high-value funds without raising HEAT', true);
-    add('Network with corporate and street contacts', true);
-  } else if (/cop|officer|internal/.test(role)) {
-    add('Close a case without civilian casualties', false);
-    add('Maintain HEAT under 25 while patrolling', true);
-    add('Root out corruption or avoid exposure', true);
-  } else if (/crew|gang|boss|leader/.test(role)) {
-    add('Build reputation from Crew Member → Crew Lead', false);
-    add('Control a safehouse and income stream', true);
-    add('Keep HEAT manageable to avoid crackdowns', true);
-  } else if (/hacker|priest|mystic/.test(role)) {
-    add('Complete a high-stakes digital or spiritual contract', false);
-    add('Gain a unique boon or exploit without exceeding HEAT 35', true);
-    add('Recruit an ally with complementary skills', true);
-  } else if (/skate|driver|stock-car/.test(role)) {
-    add('Win a sanctioned event', false);
-    add('Secure sponsorship without scandal', true);
-    add('Upgrade gear/vehicle safely', true);
-  } else if (/cook|quick-service|worker|average/.test(role)) {
-    add('Stabilize income and housing', false);
-    add('Improve one core stat by +3 through training', true);
-    add('Avoid HEAT spikes while exploring side hustles', true);
-  } else {
-    add('Define a personal milestone and achieve it', false);
-    add('Grow one relationship or alliance', true);
-    add('Keep HEAT under control while expanding options', true);
-  }
-  return out;
-}
 
 const appContainer = document.getElementById('app-container');
 
@@ -65,11 +23,8 @@ let gameState = {
   rng: createRNG(Date.now())
 };
 
-// Initialize narrative engine with local default, WebSim only if explicitly requested (credit-saver mode)
-const urlParams = new URLSearchParams(window.location.search);
-const useWebsim = urlParams.get('engine') === 'websim';
-const engineMode = useWebsim ? 'websim' : 'local';
-const engine = createNarrativeEngine({ mode: engineMode });
+// Initialize narrative engine with WebSim
+const engine = createNarrativeEngine({ mode: 'websim' });
 
 let sceneImageEl = null;
 
@@ -79,26 +34,14 @@ new PersistenceSystem(eventBus, () => gameState.character, () => gameState.narra
 // Glass House
 const glasshouse = new GlassHouse(document.getElementById('glasshouse-modal'), eventBus);
 
-// Helper functions for role summary and question enforcement
-function sanitizeRole(raw){
-  var r=String(raw||'').trim().toLowerCase();
-  if(r==='sex worker'||r==='prostitute'||r==='escort'||r.indexOf('prostit')>=0||r.indexOf('sex work')>=0) return 'Nightlife Performer';
-  if(r==='gang leader'||(r.indexOf('gang')>=0&&r.indexOf('leader')>=0)) return 'Crew Lead';
-  if(r==='gang member'||r.indexOf('gang')>=0) return 'Crew Member';
-  var parts=String(raw||'').trim().split(/\s+/),i; for(i=0;i<parts.length;i++){var w=parts[i];parts[i]=w.charAt(0).toUpperCase()+w.slice(1);}
-  return parts.join(' ');
-}
-
 // Flow
 function startCharacterCreation() {
   appContainer.innerHTML = '';
-  mountCharacterCreation(appContainer, function(char) {
+  mountCharacterCreation(appContainer, (char) => {
     if (!char.stats) char.stats = { strength:8, dexterity:8, constitution:8, intelligence:8, wisdom:8, charisma:8, heat:0, money:50, health:100, reputation:0 };
     // Default district if none yet
     if (!char.district) char.district = listDistricts()[0];
     gameState.character = char;
-    gameState.character.role = sanitizeRole(char.archetype || 'Undefined');
-    Objectives.reset(inferObjectivesFromRole(gameState.character));
     startScenario();
   });
 }
@@ -156,41 +99,6 @@ function startMainGame() {
   // Mount career log modal
   mountCareerLogModal();
 
-  // Initialize collapsible sim log
-  var simWrap=document.getElementById('sim-log-container');
-  var simBtn=document.getElementById('simlog-toggle-btn');
-  if(simWrap&&simBtn){
-    simBtn.onclick=function(){
-      if(simWrap.className.indexOf('collapsed')>=0){
-        simWrap.className=simWrap.className.replace('collapsed','').trim();
-        simBtn.textContent='▾';
-      } else {
-        simWrap.className=(simWrap.className+' collapsed').trim();
-        simBtn.textContent='▸';
-      }
-    };
-    // Also make the header clickable
-    const header = simWrap.querySelector('h4');
-    if (header) header.onclick = function() { simBtn.click(); };
-  }
-
-  // Render objectives
-  function renderObjectives() {
-    const objectivesList = document.getElementById('objectives-list');
-    if (!objectivesList) return;
-    const objectives = Objectives.getAll();
-    if (!objectives.length) {
-      objectivesList.innerHTML = '<p class="muted">No objectives.</p>';
-      return;
-    }
-    objectivesList.innerHTML = objectives.map(function(o) {
-      const statusClass = o.status === 'done' ? 'obj-done' : (o.status === 'failed' ? 'obj-fail' : 'obj-act');
-      return '<div class="objective ' + statusClass + '">' + o.text + '</div>';
-    }).join('');
-  }
-  eventBus.subscribe('objectives.updated', renderObjectives);
-  renderObjectives(); // initial render
-
   // Manual district change flow (simple prompt for now)
   eventBus.subscribe('ui.district.change.request', () => {
     const options = listDistricts();
@@ -209,7 +117,7 @@ async function nextEvent() {
     ev = await engine.nextEvent({
       character: Object.assign({}, gameState.character, {
         // include evolving role tags explicitly
-        roleTags: gameState.character.roleTags || []
+        roleTags: (gameState.character && gameState.character.roleTags) || []
       }),
       history: gameState.narrativeHistory,
       lastEvent: gameState.currentEvent,
@@ -235,44 +143,18 @@ async function nextEvent() {
   }
 }
 
-function ensureQuestion(text) {
-  var t = String(text || '').trim();
-  if (!t) return 'What do you do now?';
-  // If it already ends with ? keep it; else append
-  return /[?]\s*$/.test(t) ? t : (t + ' What do you do now?');
-}
-
-function buildRoleSummary() {
-  var c = gameState.character || {};
-  var role = c.role || c.archetype || 'Undefined';
-  return 'You are ' + role + '.';
-}
-
 function renderEvent(event) {
   document.getElementById('event-title').textContent = event.title;
-  const summary = buildRoleSummary();
-  document.getElementById('event-description').textContent = ensureQuestion(summary + ' ' + event.description);
+  document.getElementById('event-description').textContent = event.description;
   const btns = document.getElementById('decision-buttons');
   btns.innerHTML = '';
 
-  event.decisions.forEach(function(decision) {
+  event.decisions.forEach(decision => {
     const b = document.createElement('button');
     b.textContent = decision.text;
-    b.onclick = function() { applyDecision(decision); };
+    b.onclick = () => applyDecision(decision);
     btns.appendChild(b);
   });
-
-  // Add first-step helper after rendering decisions
-  var helper=document.getElementById('first-step-hint');
-  if(!helper && gameState.narrativeHistory.length <= 1){
-    helper=document.createElement('div');
-    helper.id='first-step-hint';
-    helper.style.fontSize='12px';
-    helper.style.color='#a0a0c0';
-    helper.style.marginTop='8px';
-    btns.parentNode.appendChild(helper);
-    helper.textContent='Pick an option to continue →';
-  }
 }
 
 function applyDecision(decision) {
@@ -297,13 +179,7 @@ function applyDecision(decision) {
 
   // 5) Events out
   eventBus.publish('character.stats.updated', gameState.character);
-  eventBus.publish('simlog.push', { text: 'Chose: "' + decision.text + '"' });
-
-  // 5.5) Auto-evaluate objectives
-  Objectives.autoEvaluate(gameState.character);
-
-  // 5.6) Remove first-step helper after first decision
-  var h=document.getElementById('first-step-hint'); if(h) h.parentNode.removeChild(h);
+  eventBus.publish('simlog.push', { text: `Chose: "${decision.text}"` });
 
   // 6) Next
   nextEvent();
