@@ -1,136 +1,85 @@
-// ui/hud.js
-export function mountHUD(container, character, eventBus){
-  container.innerHTML = `
-    <style>
-      .hud { display:flex; flex-direction:column; gap:10px; background:#2a2a3e; padding:10px; border-radius:8px; margin-bottom:20px; border:1px solid #7b52c9; }
-      .hud-top { display:flex; justify-content:space-between; align-items:center; gap:10px; }
-      .hud-char-info { font-size:1.1rem; }
-      .hud-stats { display:flex; gap:12px; flex-wrap:wrap; }
-      .hud-stat { text-align:center; min-width:52px; }
-      .hud-stat span { font-size:.75rem; color:#a0a0c0; }
-      .hud-actions { display:flex; gap:8px; flex-wrap:wrap; }
-      .hud-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-      .chipline { display:flex; gap:6px; flex-wrap:wrap; }
-      .chip { padding:4px 8px; border:1px solid #3a3a5e; border-radius:999px; background:#1a1a2e; font-size:12px; color:#e0e0e0; }
-      .hud-kv { font-size:.9rem; color:#c9c9e6; }
-      .hud-kv strong { color:#e0e0ff; }
-      .hud small.muted { color:#a0a0c0; }
-    </style>
+// ui/hud.js  (ES5-safe)
+export function mountHUD(container, character, eventBus) {
+  var name = (character && character.name) || 'Player';
+  var stats = (character && character.stats) || {};
+  var wanted = Math.min(5, Math.max(0, Math.floor((stats.heat || 0) / 20)));
 
-    <div class="hud">
-      <div class="hud-top">
-        <div class="hud-char-info">
-          <strong id="hud-name">${character.name}</strong>
-          <div class="wanted-wrap" style="margin-top:4px;">
-            <span class="wanted-label">Wanted:</span>
-            <span id="hud-wanted" class="wanted-stars"></span>
-          </div>
-        </div>
-        <div id="hud-stats" class="hud-stats">
-          ${Object.entries(character.stats).map(([k,v])=>{
-            const STAT_NAMES = {
-              strength: 'Strength', dexterity: 'Dexterity', constitution: 'Constitution',
-              intelligence: 'Intelligence', wisdom: 'Wisdom', charisma: 'Charisma',
-              heat: 'Heat', money: 'Money', health: 'Health', reputation: 'Reputation'
-            };
-            return `
-            <div class="hud-stat" id="hud-stat-${k}" title="${STAT_NAMES[k] || k}">
-              <span>${k.slice(0,3).toUpperCase()}</span><br/>
-              <strong>${v}</strong>
-            </div>`
-          }).join('')}
-        </div>
-        <div class="hud-actions">
-          <button id="hud-save">Save</button>
-          <button id="hud-load">Load</button>
-          <button id="hud-export">Export</button>
-          <button id="hud-community">Community</button>
-          <button id="hud-glasshouse">Glass House</button>
-          <button id="hud-careerlog">Career Log</button>
-        </div>
-      </div>
+  container.innerHTML = [
+    '<style>',
+    '.hud{display:flex;align-items:center;justify-content:space-between;background:#2a2a3e;padding:10px;border-radius:8px;margin-bottom:12px;border:1px solid #7b52c9}',
+    '.hud-left{display:flex;align-items:center;gap:12px}',
+    '.hud-name{font-weight:700;font-size:16px}',
+    '.hud-stars{display:inline-flex;gap:2px;vertical-align:middle}',
+    '.hud-stars .star{font-size:14px;opacity:.4}',
+    '.hud-stars .star.on{opacity:1}',
+    '.hud-stats{display:flex;gap:12px;flex-wrap:wrap}',
+    '.hud-stat{min-width:54px;text-align:center;font-size:12px}',
+    '.hud-stat span{display:block;color:#a0a0c0;font-size:11px}',
+    '.hud-actions{display:flex;gap:8px;flex-wrap:wrap}',
+    '.pill{border:1px solid #7b52c9;background:#1a1a2e;border-radius:999px;padding:6px 10px;font-size:12px}',
+    '.tag{border:1px solid #3a3a5e;background:#1a1a2e;border-radius:6px;padding:3px 6px;font-size:11px;color:#a0a0c0}',
+    '</style>',
+    '<div class="hud">',
+      '<div class="hud-left">',
+        '<div class="hud-name" id="hud-name">', name, '</div>',
+        '<div class="hud-stars" id="hud-stars">', renderStars(wanted), '</div>',
+        '<span class="tag" id="hud-district"></span>',
+        '<span class="tag" id="hud-clock"></span>',
+        '<span class="tag" id="hud-weather"></span>',
+      '</div>',
+      '<div class="hud-stats" id="hud-stats">', renderStats(stats), '</div>',
+      '<div class="hud-actions">',
+        '<button class="pill" id="hud-save">Save</button>',
+        '<button class="pill" id="hud-load">Load</button>',
+        '<button class="pill" id="hud-export">Export</button>',
+        '<button class="pill" id="hud-story">Story</button>',
+        '<button class="pill" id="hud-objectives">Objectives</button>',
+        '<button class="pill" id="hud-district-change">Move</button>',
+        '<button class="pill" id="hud-community">Community</button>',
+        '<button class="pill" id="hud-glasshouse">Glass House</button>',
+      '</div>',
+    '</div>'
+  ].join('');
 
-      <div class="hud-row">
-        <div class="hud-kv">District: <strong id="hud-district">${character.district || '—'}</strong></div>
-        <button id="hud-district-change" title="Change district">Change</button>
-        <div class="hud-kv" style="margin-left: auto;">
-          Time: <strong id="hud-time">Morning</strong> | Weather: <strong id="hud-weather">Clear</strong>
-        </div>
-        <small class="muted">Tip: your choices can also trigger moves.</small>
-      </div>
+  // initial badges
+  var d = (character && character.district) || 'City';
+  document.getElementById('hud-district').textContent = d;
 
-      <div>
-        <div class="hud-kv" style="margin-bottom:4px;">Career:</div>
-        <div id="hud-roles" class="chipline">
-          ${(character.roleTags||[]).map(tag => `<span class="chip">${escapeHtml(tag)}</span>`).join('')}
-        </div>
-      </div>
-    </div>
-  `;
+  // wire actions
+  document.getElementById('hud-save').onclick = function(){ eventBus.publish('persistence.save','slotA'); };
+  document.getElementById('hud-load').onclick = function(){ eventBus.publish('persistence.load','slotA'); };
+  document.getElementById('hud-export').onclick = function(){ eventBus.publish('persistence.export'); };
+  document.getElementById('hud-community').onclick = function(){ eventBus.publish('hud.community'); };
+  document.getElementById('hud-glasshouse').onclick = function(){ eventBus.publish('hud.glasshouse'); };
+  document.getElementById('hud-story').onclick = function(){ eventBus.publish('hud.careerlog'); };
+  document.getElementById('hud-objectives').onclick = function(){ eventBus.publish('ui.objectives.toggle'); };
+  document.getElementById('hud-district-change').onclick = function(){ eventBus.publish('ui.district.change.request'); };
 
-  const statsContainer = container.querySelector('#hud-stats');
-  const districtEl = container.querySelector('#hud-district');
-  const rolesEl = container.querySelector('#hud-roles');
-
-  function wantedLevelFromHeat(heat) {
-    var h = Number(heat || 0);
-    if (h >= 95) return 5;
-    if (h >= 70) return 4;
-    if (h >= 45) return 3;
-    if (h >= 25) return 2;
-    if (h >= 10) return 1;
-    return 0;
-  }
-
-  function renderWantedStars(level) {
-    var el = container.querySelector('#hud-wanted');
-    if (!el) return;
-    var i, html = '';
-    for (i=1;i<=5;i++) {
-      html += '<span class="' + (i<=level ? 'on' : 'off') + '">★</span>';
-    }
-    el.innerHTML = html;
-  }
-
-  // Initial render
-  renderWantedStars(wantedLevelFromHeat(character.stats.heat));
-
+  // live updates
   eventBus.subscribe('character.stats.updated', function(char){
-    Object.entries(char.stats).forEach(function([k,v]){
-      const el = statsContainer.querySelector('#hud-stat-' + k + ' strong');
-      if (el) el.textContent = v;
-    });
-    renderWantedStars(wantedLevelFromHeat(char.stats.heat));
+    var s = (char && char.stats) || {};
+    document.getElementById('hud-stats').innerHTML = renderStats(s);
+    var lvl = Math.min(5, Math.max(0, Math.floor((s.heat || 0)/20)));
+    document.getElementById('hud-stars').innerHTML = renderStars(lvl);
   });
+  eventBus.subscribe('district.changed', function(name){ document.getElementById('hud-district').textContent = name; });
+  eventBus.subscribe('time.tick', function(t){ document.getElementById('hud-clock').textContent = t.label; });
+  eventBus.subscribe('weather.update', function(w){ document.getElementById('hud-weather').textContent = w.label; });
 
-  eventBus.subscribe('career.tags.updated', (tags = [])=>{
-    rolesEl.innerHTML = tags.map(t => `<span class="chip">${escapeHtml(t)}</span>`).join('');
-  });
-
-  eventBus.subscribe('district.changed', (name)=>{
-    districtEl.textContent = name || '—';
-  });
-
-  const timeEl = container.querySelector('#hud-time');
-  const weatherEl = container.querySelector('#hud-weather');
-
-  eventBus.subscribe('time.changed', (timeState) => {
-    if(timeEl) timeEl.textContent = `${timeState.timeOfDay} (Day ${timeState.day})`;
-  });
-
-  eventBus.subscribe('weather.changed', (weather) => {
-    if(weatherEl) weatherEl.textContent = weather;
-  });
-
-  container.querySelector('#hud-save').onclick = () => eventBus.publish('persistence.save','manualSlot1');
-  container.querySelector('#hud-load').onclick = () => eventBus.publish('persistence.load','manualSlot1');
-  container.querySelector('#hud-export').onclick = () => eventBus.publish('persistence.export');
-  container.querySelector('#hud-community').onclick = () => eventBus.publish('hud.community');
-  container.querySelector('#hud-glasshouse').onclick = () => eventBus.publish('hud.glasshouse');
-  container.querySelector('#hud-careerlog').onclick = () => eventBus.publish('hud.careerlog');
-
-  // quick selector: prompt with list + custom
-  container.querySelector('#hud-district-change').onclick = () => eventBus.publish('ui.district.change.request');
-
-  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function renderStats(s){
+    var keys = ['strength','dexterity','constitution','intelligence','wisdom','charisma','heat','money','health','reputation'];
+    var labels = {strength:'STR',dexterity:'DEX',constitution:'CON',intelligence:'INT',wisdom:'WIS',charisma:'CHA',heat:'HEAT',money:'$',health:'HP',reputation:'REP'};
+    var tip = {strength:'Strength',dexterity:'Dexterity',constitution:'Constitution',intelligence:'Intelligence',wisdom:'Wisdom',charisma:'Charisma',heat:'Police Attention',money:'Money',health:'Health',reputation:'Reputation'};
+    var out = [];
+    for (var i=0;i<keys.length;i++){
+      var k = keys[i];
+      out.push('<div class="hud-stat" title="'+(tip[k]||k)+'"><span>'+labels[k]+'</span><strong>'+ (s[k]||0) +'</strong></div>');
+    }
+    return out.join('');
+  }
+  function renderStars(n){
+    var out=[], i;
+    for(i=0;i<5;i++){ out.push('<span class="star '+(i<n?'on':'')+'">★</span>'); }
+    return out.join('');
+  }
 }

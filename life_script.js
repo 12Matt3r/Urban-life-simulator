@@ -11,16 +11,7 @@ import { createNarrativeEngine } from './systems/narrativeEngine.js';
 import { createRNG } from './systems/rng.js';
 import { listDistricts, suggestNextDistrict, isValidDistrict } from './systems/districts.js';
 import { mountCareerLogModal, openCareerLogModal } from './ui/careerLog.js';
-import { mountStoryLog } from './ui/storyLog.js';
-import { mountShop } from './ui/shop.js';
-import { mountSaveLoad } from './ui/saveLoad.js';
 import * as Objectives from './systems/objectives.js';
-import * as Time from './systems/time.js';
-
-// --- Settings (global, ES5-safe) ---
-var urlParams = new URLSearchParams(window.location.search || '');
-var useWebsim = urlParams.get('engine') === 'websim';
-var initialAdult = urlParams.get('adult') === '1';
 
 function inferObjectivesFromRole(character) {
   var role = (character && (character.role || character.archetype) || '').toLowerCase();
@@ -71,62 +62,42 @@ let gameState = {
   narrativeHistory: [],
   currentEvent: null,
   currentMoods: [],
-  rng: createRNG(Date.now()),
-  settings: {
-    adultMode: initialAdult
-  }
+  rng: createRNG(Date.now())
 };
 
 // Initialize narrative engine with local default, WebSim only if explicitly requested (credit-saver mode)
+const urlParams = new URLSearchParams(window.location.search);
+const useWebsim = urlParams.get('engine') === 'websim';
 const engineMode = useWebsim ? 'websim' : 'local';
 const engine = createNarrativeEngine({ mode: engineMode });
 
 let sceneImageEl = null;
 
 // Persistence
-const persistence = new PersistenceSystem(eventBus, () => gameState.character, () => gameState.narrativeHistory);
-eventBus.subscribe('persistence.loaded', (loadedState) => {
-  gameState.character = loadedState.character;
-  gameState.narrativeHistory = loadedState.history;
-  // This is a simple way to reload the UI. A more sophisticated approach
-  // might be to update each component individually.
-  startMainGame();
-});
+new PersistenceSystem(eventBus, () => gameState.character, () => gameState.narrativeHistory);
 
 // Glass House
 const glasshouse = new GlassHouse(document.getElementById('glasshouse-modal'), eventBus);
 
 // Helper functions for role summary and question enforcement
-function formatTitleCase(raw){
-  var parts=String(raw||'').trim().split(/\s+/),i;
-  for(i=0;i<parts.length;i++){var w=parts[i];parts[i]=w.charAt(0).toUpperCase()+w.slice(1);}
-  return parts.join(' ');
-}
-function sanitizeRoleStandard(raw){
+function sanitizeRole(raw){
   var r=String(raw||'').trim().toLowerCase();
   if(r==='sex worker'||r==='prostitute'||r==='escort'||r.indexOf('prostit')>=0||r.indexOf('sex work')>=0) return 'Nightlife Performer';
   if(r==='gang leader'||(r.indexOf('gang')>=0&&r.indexOf('leader')>=0)) return 'Crew Lead';
   if(r==='gang member'||r.indexOf('gang')>=0) return 'Crew Member';
-  return formatTitleCase(raw);
-}
-function sanitizeRole(raw, adultMode){
-  if (adultMode) return formatTitleCase(raw);
-  return sanitizeRoleStandard(raw);
+  var parts=String(raw||'').trim().split(/\s+/),i; for(i=0;i<parts.length;i++){var w=parts[i];parts[i]=w.charAt(0).toUpperCase()+w.slice(1);}
+  return parts.join(' ');
 }
 
 // Flow
 function startCharacterCreation() {
   appContainer.innerHTML = '';
-  // Pass settings into creation (adultMode can be toggled in UI; seeded from URL)
-  if (!gameState.settings) gameState.settings = {};
-  if (typeof gameState.settings.adultMode === 'undefined') gameState.settings.adultMode = !!initialAdult;
-
-  mountCharacterCreation(appContainer, gameState.settings, function(char) {
+  mountCharacterCreation(appContainer, function(char) {
     if (!char.stats) char.stats = { strength:8, dexterity:8, constitution:8, intelligence:8, wisdom:8, charisma:8, heat:0, money:50, health:100, reputation:0 };
     // Default district if none yet
     if (!char.district) char.district = listDistricts()[0];
     gameState.character = char;
-    gameState.character.role = sanitizeRole(char.archetype || 'Undefined', !!(gameState.settings && gameState.settings.adultMode));
+    gameState.character.role = sanitizeRole(char.archetype || 'Undefined');
     Objectives.reset(inferObjectivesFromRole(gameState.character));
     startScenario();
   });
@@ -145,24 +116,28 @@ function startScenario() {
 }
 
 function startMainGame() {
-  appContainer.innerHTML = `
-    <div id="main-game-ui">
-      <div id="hud-mount"></div>
-      <div id="scene-image-container">
-        <img id="scene-image" src="" alt="Scene">
-      </div>
-      <div id="event-container">
-        <h3 id="event-title">Welcome</h3>
-        <p id="event-description">Your story begins here.</p>
-        <div id="decision-buttons"></div>
-      </div>
-      <div id="autoplay-dock"></div>
-      <div id="sim-log-container">
-        <h4>Simulation Log</h4>
-        <div id="sim-log"></div>
-      </div>
-    </div>
-  `;
+  appContainer.innerHTML = ''
+    + '<div id="main-game-ui">'
+    + '  <div id="hud-mount"></div>'
+    + '  <div id="left-col">'
+    + '    <div id="scene-image-container"><img id="scene-image" src="https://placehold.co/800x450/1a1a2e/e0e0e0?text=Urban+Life" alt="Scene"></div>'
+    + '    <div id="event-container">'
+    + '      <h3 id="event-title">Welcome</h3>'
+    + '      <p id="event-description">Your story begins here. What do you do now?</p>'
+    + '      <div id="decision-buttons"></div>'
+    + '    </div>'
+    + '  </div>'
+    + '  <div id="right-col">'
+    + '    <div id="story-panel"><h4>Story Log</h4><div id="story-log"></div></div>'
+    + '    <div id="objectives-panel"><h4>Objectives</h4><div id="objectives-list"></div></div>'
+    + '    <div id="radio-dock"></div>'
+    + '    <div id="autoplay-dock"></div>'
+    + '  </div>'
+    + '  <div id="sim-log-container">'
+    + '    <h4><button id="simlog-toggle-btn" title="Toggle">▾</button> Simulation Log</h4>'
+    + '    <div id="sim-log"></div>'
+    + '  </div>'
+    + '</div>';
 
   // Store scene image reference
   sceneImageEl = document.getElementById('scene-image');
@@ -171,7 +146,7 @@ function startMainGame() {
   mountHUD(document.getElementById('hud-mount'), gameState.character, eventBus);
 
   // Radio
-  mountRadio(document.getElementById('top-bar-radio-container'), eventBus);
+  mountRadio(document.getElementById('radio-dock'), eventBus);
 
   // Auto-play
   mountAutoPlayUI(document.getElementById('autoplay-dock'), eventBus);
@@ -183,50 +158,6 @@ function startMainGame() {
 
   // Mount career log modal
   mountCareerLogModal();
-
-  // Story Log button
-  document.getElementById('hud-story-log').onclick = () => {
-    const storyContainer = document.getElementById('story-log-modal-container');
-    mountStoryLog(storyContainer, gameState.narrativeHistory, function() {
-      storyContainer.innerHTML = '';
-    });
-  };
-
-  // Shop button
-  document.getElementById('hud-shop').onclick = () => {
-    const shopContainer = document.getElementById('shop-modal-container');
-    mountShop(shopContainer, function() { // on-close
-      shopContainer.innerHTML = '';
-    }, function(itemName, itemPrice) { // on-buy
-      if (gameState.character.stats.money >= itemPrice) {
-        gameState.character.stats.money -= itemPrice;
-        eventBus.publish('character.stats.updated', gameState.character);
-        alert(`You bought ${itemName} for $${itemPrice}.`);
-      } else {
-        alert("You don't have enough money.");
-      }
-    });
-  };
-
-  // Save/Load button
-  document.getElementById('hud-save-load').onclick = () => {
-    const container = document.getElementById('save-load-modal-container');
-    mountSaveLoad(container, function() {
-      container.innerHTML = '';
-    });
-  };
-
-  // Player dashboard tabs
-  const dashboardTabs = document.querySelectorAll('#player-dashboard-tabs .tabs button');
-  const dashboardContent = document.getElementById('player-dashboard-content');
-  dashboardTabs.forEach(tab => {
-    tab.onclick = () => {
-      dashboardTabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      const tabName = tab.dataset.tab;
-      dashboardContent.innerHTML = `<p class="muted">The '${tabName}' feature is coming soon!</p>`;
-    };
-  });
 
   // Initialize collapsible sim log
   var simWrap=document.getElementById('sim-log-container');
@@ -348,7 +279,6 @@ function renderEvent(event) {
 }
 
 function applyDecision(decision) {
-  eventBus.publish('applyDecision', decision);
   // 1) Adaptive stats
   gameState.character.stats.charisma += gameState.rng.pick([-1,0,1]);
   if (decision.risk > 50) gameState.character.stats.heat += 5;
@@ -421,8 +351,20 @@ window.Life = {
   state: {
     stats: function() { return (gameState.character && gameState.character.stats) || {}; },
     name: function() { return (gameState.character && gameState.character.name) || 'Player'; }
-  },
-  getSettings: function(){ return gameState.settings || { adultMode:false }; }
+  }
 };
+
+// whenever you add to narrativeHistory, mirror into Story Log panel
+function syncStoryLog() {
+  var host = document.getElementById('story-log'); if (!host) return;
+  var hist = (gameState && gameState.narrativeHistory) || [];
+  var out = [];
+  for (var i=0;i<hist.length;i++){
+    var h = hist[i];
+    out.push('<div class="objective"><strong>'+(h.title||'')+'</strong><br><span class="muted">→ '+(h.chosenDecisionText||'')+'</span></div>');
+  }
+  host.innerHTML = out.join('');
+}
+eventBus.subscribe('simlog.push', syncStoryLog);
 
 startCharacterCreation();
