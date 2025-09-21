@@ -46,8 +46,38 @@ function nextEventViaWebSim(ctx, timeoutMs) {
   });
 }
 
+const FAKEOUT_EVENTS = [
+  {
+    id: "fakeout_ball",
+    title: "A Glimpse of the Surreal",
+    description: "A single, bright yellow ball bounces past you, seemingly out of nowhere. You watch it until it disappears around a corner. The street is silent again.",
+    decisions: [{ id: 'cont', text: 'Okay...', risk: 0, aggression: 0 }],
+    imagePrompt: "a single yellow ball bouncing on an empty city street at night, surreal, photorealistic"
+  },
+  {
+    id: "fakeout_lottery",
+    title: "Distant Lottery",
+    description: "A public broadcast screen flickers to life nearby, announcing the winning lottery numbers for the day. They mean nothing to you, but you watch for a moment anyway.",
+    decisions: [{ id: 'cont', text: 'Carry on.', risk: 0, aggression: 0 }],
+    imagePrompt: "a person standing on a dark street looking up at a blurry public announcement screen, melancholic"
+  },
+  {
+    id: "fakeout_pigeons",
+    title: "Strange Synchronicity",
+    description: "A flock of pigeons takes flight nearby. For a moment, they move in a perfect, almost geometric pattern against the sky before scattering into chaos.",
+    decisions: [{ id: 'cont', text: 'Weird.', risk: 0, aggression: 0 }],
+    imagePrompt: "pigeons flying in a perfect geometric pattern against a gloomy city sky, uncanny, strange"
+  }
+];
+
 // Minimal local mock; always ends with '?'
 function localMockNext(ctx) {
+  // 15% chance of a fakeout event
+  if (Math.random() < 0.15) {
+    const fakeout = FAKEOUT_EVENTS[Math.floor(Math.random() * FAKEOUT_EVENTS.length)];
+    return Promise.resolve(fakeout);
+  }
+
   return Promise.resolve({
     id: "fallback_mock",
     title: "Quiet Night",

@@ -15,7 +15,38 @@ const ABILITIES = [
   'heat','money','health','reputation'
 ];
 
-export function mountCharacterCreation(container, onComplete){
+// Adult-role expansions (shown only when Adult mode is ON)
+const ADULT_EXTRAS = [
+  'Sex Worker','Gang Member','Gang Leader','Bookie','Fence',
+  'Nightlife Performer','Adult Entertainer','Loan Shark'
+];
+
+function sanitizeRoleForStandard(raw){
+  if (!raw) return '';
+  var s = String(raw).toLowerCase();
+  if (s.indexOf('sex worker')!==-1 || s.indexOf('prostitute')!==-1 || s.indexOf('escort')!==-1) return 'Nightlife Performer';
+  if (s.indexOf('gang leader')!==-1) return 'Crew Lead';
+  if (s.indexOf('gang')!==-1) return 'Crew Member';
+  if (s.indexOf('pimp')!==-1) return 'Nightlife Manager';
+  if (s.indexOf('stripper')!==-1) return 'Dancer';
+  if (s.indexOf('dealer')!==-1) return 'Street Vendor';
+  return raw;
+}
+
+export function mountCharacterCreation(container, maybeSettings, maybeOnComplete){
+  // Backward-compatible signature:
+  // - old: (container, onComplete)
+  // - new: (container, settings, onComplete)
+  var settings = {};
+  var onComplete = null;
+  if (typeof maybeOnComplete === 'function') {
+    settings = maybeSettings || {};
+    onComplete = maybeOnComplete;
+  } else {
+    onComplete = /** @type {Function} */ (maybeSettings);
+    settings = {};
+  }
+  var adultMode = !!settings.adultMode;
   let seed = Date.now()>>>0;
   let rng = createRNG(seed);
   let pickedIdea = '';
@@ -35,6 +66,11 @@ export function mountCharacterCreation(container, onComplete){
     </style>
     <div class="card creation-card">
       <h2>Character Creation</h2>
+
+        <div class="row" style="justify-content:center;margin-bottom:6px;">
+          <label><input type="radio" name="mode" value="standard"${adultMode?'':' checked'}> Standard</label>
+          <label><input type="radio" name="mode" value="adult"${adultMode?' checked':''}> Adult</label>
+        </div>
 
       <div class="row">
         <input id="char-name" type="text" placeholder="Enter Character Name" style="flex:1; min-width:260px;">
@@ -59,7 +95,7 @@ export function mountCharacterCreation(container, onComplete){
       </div>
 
       <p class="muted" style="margin-top:14px;">Current seed: <span id="rng-seed"></span></p>
-      <button id="create-char" style="margin-top:8px;" disabled>Create Character</button>
+        <button id="create-char" style="margin-top:8px;" disabled>Start Simulation</button>
     </div>
   `;
 
@@ -73,6 +109,7 @@ export function mountCharacterCreation(container, onComplete){
   const randAbilBtn      = container.querySelector('#rand-abil');
   const seedLabel        = container.querySelector('#rng-seed');
   const createBtn        = container.querySelector('#create-char');
+  const modeRadios       = container.querySelectorAll('input[name="mode"]');
 
   function setSeed(next){
     seed = (Number(next)>>>0)||1;
@@ -86,7 +123,12 @@ export function mountCharacterCreation(container, onComplete){
   seedInput.onchange  = (e) => setSeed(e.target.value);
 
   function renderIdeas(){
-    const picks = rng.shuffle(SEED_IDEAS).slice(0,5);
+    // In Adult mode, we extend the pool with adult-only roles
+    var pool = SEED_IDEAS.slice(0);
+    if (adultMode) {
+      for (var i=0;i<ADULT_EXTRAS.length;i++){ pool.push(ADULT_EXTRAS[i]); }
+    }
+    const picks = rng.shuffle(pool).slice(0,5);
     ideasWrap.innerHTML = picks.map(txt => `<span class="idea" data-v="${txt}">${txt}</span>`).join('');
     ideasWrap.querySelectorAll('.idea').forEach(el=>{
       el.onclick = () => {
@@ -130,6 +172,18 @@ export function mountCharacterCreation(container, onComplete){
     createBtn.textContent = 'Start Simulation';
   }
 
+  // Mode toggle wiring (updates suggestions immediately)
+  for (var r=0;r<modeRadios.length;r++){
+    modeRadios[r].onchange = function(){
+      adultMode = (this.value === 'adult');
+      // reflect into settings if provided (so life_script can read it)
+      if (maybeSettings && typeof maybeSettings === 'object') {
+        maybeSettings.adultMode = adultMode;
+      }
+      renderIdeas();
+    };
+  }
+
   nameInput.oninput = validate;
   customArchInput.oninput = validate;
   randAbilBtn.onclick = renderAbilities;
@@ -146,9 +200,12 @@ export function mountCharacterCreation(container, onComplete){
       .split(/[,/&]| and | with | plus | - |—/g)
       .map(s=>s.trim()).filter(Boolean).slice(0,8);
 
+    // Apply sanitization only in Standard mode
+    var finalArchetype = adultMode ? roleText : sanitizeRoleForStandard(roleText);
+
     onComplete({
       name: nameInput.value.trim(),
-      archetype: roleText,     // full free-text self-description
+      archetype: finalArchetype,   // sanitized in Standard; raw in Adult
       roleTags,                // normalized tags used for drift
       stats
     });
