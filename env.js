@@ -1,5 +1,17 @@
-// env.js — fill with your real project URL/key (safe to commit anon key)
-window.__ENV__ = {
-  SUPABASE_URL: "https://mtangxfpkznmahjkykgq.supabase.co",
-  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10YW5neGZwa3pubWFoamt5a2dxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgxODI2OTcsImV4cCI6MjA3Mzc1ODY5N30.63OLPPPl0LWLrOWJvgMOTQ9P5ETyvYXxXh9G15878EA"
+// Urban Life Simulator - Environment Flags
+
+var Env = {
+    debug: false
 };
+
+(function() {
+    var queryString = window.location.search.substring(1);
+    var params = queryString.split('&');
+    for (var i = 0; i < params.length; i++) {
+        var pair = params[i].split('=');
+        if (decodeURIComponent(pair[0]) === 'debug' && decodeURIComponent(pair[1]) === '1') {
+            Env.debug = true;
+            break;
+        }
+    }
+})();

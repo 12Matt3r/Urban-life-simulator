@@ -1,97 +1,117 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Urban Life Simulator</title>
-  <base href="__PUBLIC_BASE_URL__">
-  <link rel="stylesheet" href="life.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Urban Life Simulator</title>
+    <link rel="stylesheet" href="life.css">
 </head>
 <body>
-  <!-- App shell for character creation -->
-  <div id="app-container">
-    <div class="card">
-      <h2>Urban Life Simulator</h2>
-      <p class="muted">Loading… if this screen stays, check the Boot Log below.</p>
-    </div>
-  </div>
+    <div id="character-creation-screen">
+        <div class="modal">
+            <h2>Create Your Character</h2>
+            <p>What is your role in this city?</p>
 
-  <!-- Main Game UI (hidden by default) -->
-  <div id="main-game-ui" hidden>
+            <input type="text" id="role-input" placeholder="e.g., 'Courier', 'Musician', 'Detective'">
+
+            <div id="suggested-roles">
+                <p>Or choose a template:</p>
+                <button class="role-suggestion">Street Artist</button>
+                <button class="role-suggestion">Vigilante</button>
+                <button class="role-suggestion">Data Broker</button>
+            </div>
+
+            <div id="character-stats">
+                <h3>Stats</h3>
+                <ul>
+                    <li><span class="stat-name" title="Strength">STR</span>: <span id="stat-str">10</span></li>
+                    <li><span class="stat-name" title="Dexterity">DEX</span>: <span id="stat-dex">10</span></li>
+                    <li><span class="stat-name" title="Constitution">CON</span>: <span id="stat-con">10</span></li>
+                    <li><span class="stat-name" title="Intelligence">INT</span>: <span id="stat-int">10</span></li>
+                    <li><span class="stat-name" title="Wisdom">WIS</span>: <span id="stat-wis">10</span></li>
+                    <li><span class="stat-name" title="Charisma">CHA</span>: <span id="stat-cha">10</span></li>
+                </ul>
+            </div>
+
+            <button id="start-game-btn">Begin Life</button>
+        </div>
+    </div>
+
     <div id="top-bar">
-      <button id="hud-save">Save</button>
-      <button id="hud-load">Load</button>
-      <button id="hud-export">Export</button>
-      <button id="hud-story">Story</button>
-      <button id="hud-community">Community</button>
-      <button id="hud-glasshouse">Glass House</button>
-      <button id="hud-music">Music</button>
-      <button id="hud-auto">Auto</button>
+        <button>Save</button>
+        <button>Load</button>
+        <button>Export</button>
+        <button>Community</button>
+        <button>Glasshouse</button>
+        <button>Backrooms</button>
+        <button id="music-btn">Music</button>
+        <button>Auto</button>
+        <button id="shop-btn">Shop</button>
     </div>
-    <div id="game-columns">
-      <div id="left-column">
-        <div id="objectives-card" class="card">
-          <h4>Objectives</h4>
-          <div id="objectives-list"></div>
+
+    <div id="main-container">
+        <div id="left-panel">
+            <div id="story-text"></div>
+            <div id="choices"></div>
+            <img id="scene-image" src="" alt="Scene Image" style="width: 100%; height: auto; margin-top: 15px;">
         </div>
-        <div id="storyline-card" class="card">
-          <h3 id="event-title"></h3>
-          <p id="event-description"></p>
-          <div id="decision-buttons"></div>
+        <div id="right-panel">
+            <div id="dashboard">
+                <h2>Dashboard</h2>
+        <div id="hud-extra" style="font-size:12px;color:#a0a0c0;display:flex;gap:12px;margin-bottom:10px;">
+            <span id="hud-time">🕒 --:--</span>
+            <span id="hud-weather">☀️ --</span>
         </div>
-      </div>
-      <div id="right-column">
-        <div id="hud-card" class="card">
-          <div id="hud-mount"></div>
+                <div id="stats"></div>
+                <div id="objectives"></div>
+                <div id="wanted-level"></div>
+            </div>
         </div>
-        <div id="player-dashboard-tabs" class="card">
-          <div class="tabs">
-            <button class="active" data-tab="items">Items</button>
-            <button data-tab="weapons">Weapons</button>
-            <button data-tab="armor">Armor</button>
-            <button data-tab="rings">Rings</button>
-            <button data-tab="encounters">Encounters</button>
-          </div>
-          <div id="player-dashboard-content">
-            <p class="muted">Feature not yet implemented.</p>
-          </div>
-        </div>
-        <div id="traits-card" class="card">
-          <h4>Traits</h4>
-          <p class="muted">Feature not yet implemented.</p>
-        </div>
-        <div id="skill-tree-card" class="card">
-          <h4>Skill Tree</h4>
-          <p class="muted">Feature not yet implemented.</p>
-        </div>
-      </div>
     </div>
-  </div>
 
-  <!-- Collapsible Sim Log -->
-  <div id="sim-log-container" class="collapsed">
-    <h4>Simulation Log <button id="simlog-toggle-btn" title="Expand/Collapse">▸</button></h4>
-    <div id="sim-log"></div>
-  </div>
+    <div id="sim-log-container">
+        <button id="toggle-log">Toggle Log</button>
+        <div id="sim-log" class="hidden"></div>
+    </div>
 
-  <!-- Modals -->
-  <div id="glass-house-overlay" class="modal-overlay" hidden></div>
-  <div id="community-hub" class="modal-overlay" hidden></div>
-  <div id="career-log-modal" class="modal-overlay" hidden></div>
+    <script src="env.js"></script>
+    <script src="bootlog.js"></script>
+    <script src="systems/time.js"></script>
+    <script src="systems/weather.js"></script>
+    <script src="systems/objectives.js"></script>
+    <script src="systems/save.js"></script>
+    <script src="ui/hud.js"></script>
+    <script src="ui/shop.js"></script>
+    <script src="ui/radio.js"></script>
+    <script src="ui/character_creation.js"></script>
+    <script src="life_script.js"></script>
 
-  <!-- WebSim Narrator wormhole -->
-  <iframe id="websim-narrator"
-    src="https://websim.com/@SOFAKINGSADBOI/narrator-api"
-    style="width:0;height:0;border:0;position:absolute;left:-9999px;"
-    referrerpolicy="no-referrer"
-    sandbox="allow-scripts allow-same-origin"></iframe>
+    <div id="shop-modal" class="modal-overlay" hidden>
+        <div class="modal-content">
+            <button class="close-btn">&times;</button>
+            <h2>General Store</h2>
+            <p id="shop-hours-msg"></p>
+            <ul id="shop-items">
+                <!-- Items will be populated by JS -->
+            </ul>
+        </div>
+    </div>
 
-  <!-- Boot log overlay so you never get a silent white screen -->
-  <div id="boot-status"><b>Boot log</b><pre id="boot-log" style="white-space:pre-wrap;margin-top:6px"></pre></div>
-
-  <!-- Load scripts in proper order -->
-  <script src="env.js"></script>
-  <script src="bootlog.js"></script>
-  <script type="module" src="life_script.js"></script>
+    <div id="radio-modal" class="modal-overlay" hidden>
+        <div class="modal-content">
+            <button class="close-btn">&times;</button>
+            <h2>Community Radio</h2>
+            <div id="audio-gate">
+                <p>Audio is muted. Click to enable.</p>
+                <button id="enable-audio-btn">Enable Audio</button>
+            </div>
+            <div id="radio-player" class="hidden">
+                <p><strong>Now Playing:</strong> <span id="now-playing">--</span></p>
+                <ul id="station-list">
+                    <!-- Stations will be populated by JS -->
+                </ul>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
