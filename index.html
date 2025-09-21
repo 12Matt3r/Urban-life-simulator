@@ -19,14 +19,16 @@
   <!-- Main Game UI (hidden by default) -->
   <div id="main-game-ui" hidden>
     <div id="top-bar">
-      <button id="hud-save">Save</button>
-      <button id="hud-load">Load</button>
-      <button id="hud-export">Export</button>
-      <button id="hud-story">Story</button>
-      <button id="hud-community">Community</button>
-      <button id="hud-glasshouse">Glass House</button>
-      <button id="hud-music">Music</button>
-      <button id="hud-auto">Auto</button>
+      <h1 class="game-title">Urban Life Simulator</h1>
+      <div id="top-bar-actions">
+        <button id="hud-save-load">Save / Load</button>
+        <button id="hud-export">Export</button>
+        <button id="hud-story-log">Story Log</button>
+        <button id="hud-community">Community</button>
+        <button id="hud-glasshouse">Glass House</button>
+        <button id="hud-shop">Shop</button>
+      </div>
+      <div id="top-bar-radio-container"></div>
     </div>
     <div id="game-columns">
       <div id="left-column">
@@ -75,6 +77,9 @@
   </div>
 
   <!-- Modals -->
+  <div id="story-log-modal-container"></div>
+  <div id="shop-modal-container"></div>
+  <div id="save-load-modal-container"></div>
   <div id="glass-house-overlay" class="modal-overlay" hidden></div>
   <div id="community-hub" class="modal-overlay" hidden></div>
   <div id="career-log-modal" class="modal-overlay" hidden></div>

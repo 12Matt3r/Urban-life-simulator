@@ -38,6 +38,19 @@ export async function cloudLoad(slot) {
   return data || null;
 }
 
+export async function listSaves() {
+  if (!supabase) return [];
+  const user = await ensureAuth();
+  if (!user) return [];
+  const { data, error } = await supabase.from("saves")
+    .select("slot, updated_at").eq("user_id", user.id);
+  if (error) {
+    console.error("Error listing saves:", error);
+    return [];
+  }
+  return data || [];
+}
+
 export async function listStations() {
   if (!supabase) return [];
   const { data, error } = await supabase.from("stations").select("*").order("name");
