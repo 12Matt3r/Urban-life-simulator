@@ -1,370 +1,316 @@
-import { eventBus } from './systems/eventBus.js';
-import { mountCharacterCreation } from './ui/characterCreation.js';
-import { mountScenarioStart } from './ui/scenarioStart.js';
-import { mountHUD } from './ui/hud.js';
-import { mountRadio } from './ui/radio.js';
-import { mountAutoPlayUI } from './ui/autoplayDock.js';
-import { GlassHouse } from './ui/glasshouse.js';
-import { openCommunityHub } from './ui/communityHub.js';
-import { PersistenceSystem } from './systems/persistence.js';
-import { createNarrativeEngine } from './systems/narrativeEngine.js';
-import { createRNG } from './systems/rng.js';
-import { listDistricts, suggestNextDistrict, isValidDistrict } from './systems/districts.js';
-import { mountCareerLogModal, openCareerLogModal } from './ui/careerLog.js';
-import * as Objectives from './systems/objectives.js';
+// life_script.js (ES5)
+(function(global) {
+  // Backrooms integration (storyline-scale frequency)
+  var BACKROOMS_TARGET_STORYLINE_PROB = 0.25; // ~25% of storylines ever glitch
+  var BACKROOMS_AVG_TURNS_PER_STORY   = 20;   // tune if your stories are longer/shorter
 
-function inferObjectivesFromRole(character) {
-  var role = (character && (character.role || character.archetype) || '').toLowerCase();
-  var out = [];
-  function add(s, soft) { out.push({ text: s, soft: !!soft }); }
-
-  if (/dj|performer|musician|nightlife/.test(role)) {
-    add('Book a headline set in a prime district', false);
-    add('Keep HEAT under 40 while promoting gigs', true);
-    add('Acquire premium gear and a reliable vehicle', true);
-  } else if (/bank|launder/.test(role)) {
-    add('Establish a clean front business', false);
-    add('Move high-value funds without raising HEAT', true);
-    add('Network with corporate and street contacts', true);
-  } else if (/cop|officer|internal/.test(role)) {
-    add('Close a case without civilian casualties', false);
-    add('Maintain HEAT under 25 while patrolling', true);
-    add('Root out corruption or avoid exposure', true);
-  } else if (/crew|gang|boss|leader/.test(role)) {
-    add('Build reputation from Crew Member → Crew Lead', false);
-    add('Control a safehouse and income stream', true);
-    add('Keep HEAT manageable to avoid crackdowns', true);
-  } else if (/hacker|priest|mystic/.test(role)) {
-    add('Complete a high-stakes digital or spiritual contract', false);
-    add('Gain a unique boon or exploit without exceeding HEAT 35', true);
-    add('Recruit an ally with complementary skills', true);
-  } else if (/skate|driver|stock-car/.test(role)) {
-    add('Win a sanctioned event', false);
-    add('Secure sponsorship without scandal', true);
-    add('Upgrade gear/vehicle safely', true);
-  } else if (/cook|quick-service|worker|average/.test(role)) {
-    add('Stabilize income and housing', false);
-    add('Improve one core stat by +3 through training', true);
-    add('Avoid HEAT spikes while exploring side hustles', true);
-  } else {
-    add('Define a personal milestone and achieve it', false);
-    add('Grow one relationship or alliance', true);
-    add('Keep HEAT under control while expanding options', true);
+  function computePerTurnBaseProb(target, avgTurns) {
+    // q = 1 - (1 - target)^(1/n)
+    return 1 - Math.pow(1 - target, 1 / Math.max(1, avgTurns));
   }
-  return out;
-}
 
-const appContainer = document.getElementById('app-container');
+  var backroomsState = {
+    inBackrooms: false,
+    glitchedThisStoryline: false, // ensures max once per storyline
+    turnsElapsed: 0,
+    lastGlitchTs: 0,
+    cooldownMs: 120000
+  };
 
-// Game state with role drift support
-let gameState = {
-  character: null,
-  narrativeHistory: [],
-  currentEvent: null,
-  currentMoods: [],
-  rng: createRNG(Date.now())
-};
+  var BACKROOMS_BASE_PER_TURN = computePerTurnBaseProb(
+    BACKROOMS_TARGET_STORYLINE_PROB,
+    BACKROOMS_AVG_TURNS_PER_STORY
+  ); // ≈ 0.014 when target=0.25 and turns=20
 
-// Initialize narrative engine with local default, WebSim only if explicitly requested (credit-saver mode)
-const urlParams = new URLSearchParams(window.location.search);
-const useWebsim = urlParams.get('engine') === 'websim';
-const engineMode = useWebsim ? 'websim' : 'local';
-const engine = createNarrativeEngine({ mode: engineMode });
+  var appContainer = document.getElementById('app-container');
+  var mainGameUI = document.getElementById('main-game-ui');
+  var sceneImageEl;
+  var narrativeEngine;
 
-let sceneImageEl = null;
+  var gameState = {
+    character: null,
+    narrativeHistory: [],
+    currentEvent: null,
+    inBackrooms: false,
+    calmTurns: 0,
+    settings: {
+      adultMode: false
+    }
+  };
 
-// Persistence
-new PersistenceSystem(eventBus, () => gameState.character, () => gameState.narrativeHistory);
+  function maybeGlitchIntoBackrooms(decision) {
+    if (backroomsState.inBackrooms) return;
+    if (backroomsState.glitchedThisStoryline) return; // only once per storyline
 
-// Glass House
-const glasshouse = new GlassHouse(document.getElementById('glasshouse-modal'), eventBus);
+    var now = Date.now();
+    if (now - backroomsState.lastGlitchTs < backroomsState.cooldownMs) return;
 
-// Helper functions for role summary and question enforcement
-function sanitizeRole(raw){
-  var r=String(raw||'').trim().toLowerCase();
-  if(r==='sex worker'||r==='prostitute'||r==='escort'||r.indexOf('prostit')>=0||r.indexOf('sex work')>=0) return 'Nightlife Performer';
-  if(r==='gang leader'||(r.indexOf('gang')>=0&&r.indexOf('leader')>=0)) return 'Crew Lead';
-  if(r==='gang member'||r.indexOf('gang')>=0) return 'Crew Member';
-  var parts=String(raw||'').trim().split(/\s+/),i; for(i=0;i<parts.length;i++){var w=parts[i];parts[i]=w.charAt(0).toUpperCase()+w.slice(1);}
-  return parts.join(' ');
-}
+    var base = BACKROOMS_BASE_PER_TURN;
+    var turns = backroomsState.turnsElapsed || 0;
+    var ramp = 1 + Math.min(0.5, turns / 40);
+    var p = base * ramp;
 
-// Flow
-function startCharacterCreation() {
-  appContainer.innerHTML = '';
-  mountCharacterCreation(appContainer, function(char) {
-    if (!char.stats) char.stats = { strength:8, dexterity:8, constitution:8, intelligence:8, wisdom:8, charisma:8, heat:0, money:50, health:100, reputation:0 };
-    // Default district if none yet
-    if (!char.district) char.district = listDistricts()[0];
-    gameState.character = char;
-    gameState.character.role = sanitizeRole(char.archetype || 'Undefined');
-    Objectives.reset(inferObjectivesFromRole(gameState.character));
-    startScenario();
-  });
-}
+    var txt = String((decision && decision.text) || '').toLowerCase();
+    var cues = ['dark', 'hall', 'stair', 'elevator', 'warehouse', 'maintenance', 'basement', 'service', 'flee', 'run', 'hide', 'sleep', 'lay low', 'noclip'];
+    var hasCue = false;
+    for (var i = 0; i < cues.length; i++) {
+      if (txt.indexOf(cues[i]) >= 0) { hasCue = true; break; }
+    }
+    if (hasCue) p += 0.01;
 
-function startScenario() {
-  appContainer.innerHTML = '';
-  mountScenarioStart(appContainer, gameState.character, (char, scenario) => {
-    // Apply stat bonuses
-    Object.entries(scenario.statBonuses).forEach(([stat, val]) => {
-      char.stats[stat] = (char.stats[stat] || 0) + val;
+    if (p > 0.04) p = 0.04;
+
+    var roll = Math.random();
+    if (roll >= p) return;
+
+    backroomsState.inBackrooms = true;
+    backroomsState.glitchedThisStoryline = true;
+    backroomsState.lastGlitchTs = now;
+
+    global.eventBus.publish('simlog.push', { text: 'BK: Reality stutters. The walls don’t meet right…' });
+    global.eventBus.publish('backrooms.open');
+    global.eventBus.publish('backrooms.set', {
+      contentMode: (new URLSearchParams(global.location.search).get('adult') === '1' || (gameState.character && gameState.character.adultMode)) ? 'adult' : 'standard'
     });
-    gameState.narrativeHistory.push({ title: "Origin", chosenDecisionText: scenario.text });
-    startMainGame();
-  });
-}
+    global.eventBus.publish('backrooms.send', { type:'action', text: 'I suddenly glitch through reality. Where am I?' });
+  }
 
-function startMainGame() {
-  appContainer.innerHTML = ''
-    + '<div id="main-game-ui">'
-    + '  <div id="hud-mount"></div>'
-    + '  <div id="left-col">'
-    + '    <div id="scene-image-container"><img id="scene-image" src="https://placehold.co/800x450/1a1a2e/e0e0e0?text=Urban+Life" alt="Scene"></div>'
-    + '    <div id="event-container">'
-    + '      <h3 id="event-title">Welcome</h3>'
-    + '      <p id="event-description">Your story begins here. What do you do now?</p>'
-    + '      <div id="decision-buttons"></div>'
-    + '    </div>'
-    + '  </div>'
-    + '  <div id="right-col">'
-    + '    <div id="story-panel"><h4>Story Log</h4><div id="story-log"></div></div>'
-    + '    <div id="objectives-panel"><h4>Objectives</h4><div id="objectives-list"></div></div>'
-    + '    <div id="radio-dock"></div>'
-    + '    <div id="autoplay-dock"></div>'
-    + '  </div>'
-    + '  <div id="sim-log-container">'
-    + '    <h4><button id="simlog-toggle-btn" title="Toggle">▾</button> Simulation Log</h4>'
-    + '    <div id="sim-log"></div>'
-    + '  </div>'
-    + '</div>';
+  function init() {
+    if (!global.eventBus) { console.error('eventBus not found!'); return; }
+    if (global.BackroomsBridge) { global.BackroomsBridge.init(global.eventBus); }
 
-  // Store scene image reference
-  sceneImageEl = document.getElementById('scene-image');
+    var urlParams = new URLSearchParams(global.location.search);
+    var useWebsim = urlParams.get('engine') === 'websim';
+    narrativeEngine = createNarrativeEngine({ mode: useWebsim ? 'websim' : 'local' });
 
-  // HUD
-  mountHUD(document.getElementById('hud-mount'), gameState.character, eventBus);
+    setupEventListeners();
+    startCharacterCreation();
+  }
 
-  // Radio
-  mountRadio(document.getElementById('radio-dock'), eventBus);
+  function startCharacterCreation() {
+    backroomsState.inBackrooms = false;
+    backroomsState.glitchedThisStoryline = false;
+    backroomsState.turnsElapsed = 0;
 
-  // Auto-play
-  mountAutoPlayUI(document.getElementById('autoplay-dock'), eventBus);
+    mainGameUI.hidden = true;
+    appContainer.hidden = false;
+    mountCharacterCreation(appContainer, gameState.settings, function(character) {
+      gameState.character = character;
+      gameState.character.stats = character.stats || { strength: 5, dexterity: 5, constitution: 5, intelligence: 5, wisdom: 5, charisma: 5, heat: 0, money: 100, health: 100, reputation: 0 };
+      gameState.character.district = character.district || 'Greyline District';
 
-  // Listen for HUD actions
-  eventBus.subscribe('hud.community', () => openCommunityHub());
-  eventBus.subscribe('hud.glasshouse', () => glasshouse.enter(gameState.character));
-  eventBus.subscribe('hud.careerlog', () => openCareerLogModal());
+      var role = character.role || 'Wanderer';
+      gameState.character.role = role.split(' ').map(function(w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' ');
 
-  // Mount career log modal
-  mountCareerLogModal();
+      Objectives.reset(inferObjectivesFromRole(gameState.character));
 
-  // Initialize collapsible sim log
-  var simWrap=document.getElementById('sim-log-container');
-  var simBtn=document.getElementById('simlog-toggle-btn');
-  if(simWrap&&simBtn){
-    simBtn.onclick=function(){
-      if(simWrap.className.indexOf('collapsed')>=0){
-        simWrap.className=simWrap.className.replace('collapsed','').trim();
-        simBtn.textContent='▾';
-      } else {
-        simWrap.className=(simWrap.className+' collapsed').trim();
-        simBtn.textContent='▸';
+      appContainer.hidden = true;
+      startMainGame();
+    });
+  }
+
+  function startMainGame() {
+    mainGameUI.hidden = false;
+    mountHUD(document.getElementById('hud-mount'), gameState.character, global.eventBus);
+    sceneImageEl = document.getElementById('scene-image');
+
+    var simLogContainer = document.getElementById('sim-log-container');
+    var simLogToggle = document.getElementById('toggle-sim-log');
+    if (simLogToggle) {
+      simLogToggle.onclick = function() {
+        simLogContainer.classList.toggle('collapsed');
+        simLogToggle.textContent = simLogContainer.classList.contains('collapsed') ? '▸' : '▾';
+        localStorage.setItem('simLogCollapsed', simLogContainer.classList.contains('collapsed'));
+      };
+      if (localStorage.getItem('simLogCollapsed') === 'true') {
+        simLogContainer.classList.add('collapsed');
+        simLogToggle.textContent = '▸';
+      }
+    }
+
+    handleAction({ text: "The simulation begins." });
+  }
+
+  function setupEventListeners() {
+    var actionInput = document.getElementById('action-input');
+    var actionBtn = document.getElementById('action-btn');
+
+    actionBtn.onclick = function() {
+      var text = actionInput.value.trim();
+      if (text) {
+        handleAction({ text: text });
+        actionInput.value = '';
       }
     };
-    // Also make the header clickable
-    const header = simWrap.querySelector('h4');
-    if (header) header.onclick = function() { simBtn.click(); };
+    actionInput.onkeydown = function(e) {
+      if (e.key === 'Enter') {
+        actionBtn.click();
+      }
+    };
+
+    global.eventBus.subscribe('backrooms.response', function(res) {
+      handleEngineResponse(res);
+    });
+
+    global.eventBus.subscribe('backrooms.closed', function() {
+      gameState.inBackrooms = false;
+      global.eventBus.publish('simlog.push', { topic: 'BK', message: 'Returned from the Backrooms.' });
+    });
+
+    global.eventBus.subscribe('objectives.updated', renderObjectives);
+
+    global.eventBus.subscribe('backrooms.response', function (res) {
+      // res: { description, imageUrl, itemsGained, itemsLost, statsChanges, currentLevel }
+      handleEngineResponse({
+        title: 'The Backrooms - ' + (res.currentLevel || 'Level ???'),
+        description: res.description,
+        decisions: [], // Backrooms is free-text only for now
+        imagePrompt: res.imageUrl, // Assuming imageUrl can be used as a prompt
+        statChanges: res.statsChanges || {}
+      });
+    });
   }
 
-  // Render objectives
+  function handleAction(playerAction) {
+    global.eventBus.publish('applyDecision', playerAction);
+    maybeGlitchIntoBackrooms(playerAction);
+
+    if (gameState.inBackrooms) {
+      global.eventBus.publish('backrooms.send', playerAction);
+      return;
+    }
+
+    var context = {
+      actionText: playerAction.text,
+      character: gameState.character,
+      history: gameState.narrativeHistory,
+      lastEvent: gameState.currentEvent,
+      contentMode: gameState.settings.adultMode ? 'adult' : 'standard',
+      time: TimeSystem.getCurrent(),
+      weather: WeatherSystem.getCurrent(),
+      district: gameState.character.district
+    };
+
+    narrativeEngine.nextTurn(context).then(handleEngineResponse);
+  }
+
+  function handleEngineResponse(response) {
+    gameState.currentEvent = response;
+    renderEvent(response);
+
+    if (response.statChanges) {
+      var heatChange = 0;
+      for (var stat in response.statChanges) {
+        if (gameState.character.stats.hasOwnProperty(stat)) {
+          gameState.character.stats[stat] += response.statChanges[stat];
+          if (stat === 'heat') {
+            heatChange = response.statChanges[stat];
+          }
+        }
+      }
+
+      if (heatChange > 0) {
+        gameState.calmTurns = 0;
+      } else {
+        gameState.calmTurns++;
+      }
+
+      if (gameState.calmTurns >= 4) {
+        var heatReduction = Math.floor(Math.random() * 3) + 3; // 3 to 5
+        gameState.character.stats.heat = Math.max(0, gameState.character.stats.heat - heatReduction);
+        gameState.calmTurns = 0;
+      }
+
+      global.eventBus.publish('character.stats.updated', gameState.character);
+
+    global.eventBus.subscribe('shop.buy', function(item) {
+      if (gameState.character.stats.money >= item.price) {
+        gameState.character.stats.money -= item.price;
+        global.eventBus.publish('character.stats.updated', gameState.character);
+        alert('You bought ' + item.name + ' for $' + item.price);
+      } else {
+        alert("You don't have enough money.");
+      }
+    });
+    }
+
+    gameState.narrativeHistory.push({
+      title: response.title,
+      chosenDecisionText: response.description
+    });
+    backroomsState.turnsElapsed = (backroomsState.turnsElapsed || 0) + 1;
+    syncStoryLog();
+
+    Objectives.autoEvaluate(gameState.character);
+
+    global.eventBus.publish('simlog.push', { topic: 'SIM', message: response.title });
+  }
+
+  function renderEvent(event) {
+    document.getElementById('event-title').textContent = event.title;
+    document.getElementById('event-description').textContent = ensureQuestion(event.description);
+
+    var buttonsContainer = document.getElementById('decision-buttons');
+    buttonsContainer.innerHTML = '';
+    if (event.decisions) {
+      event.decisions.forEach(function(decision) {
+        var button = document.createElement('button');
+        button.textContent = decision.text;
+        button.onclick = function() { handleAction(decision); };
+        buttonsContainer.appendChild(button);
+      });
+    }
+  }
+
+  function ensureQuestion(t) {
+    t = String(t || '').trim();
+    return /[?]\s*$/.test(t) ? t : (t + ' What do you do now?');
+  }
+
+  function syncStoryLog() {
+    var host = document.getElementById('story-log');
+    if (!host) return;
+    var hist = gameState.narrativeHistory || [];
+    var out = [];
+    for (var i = 0; i < hist.length; i++) {
+      var h = hist[i];
+      out.push('<div class="log-entry"><strong>' + (h.title || '') + '</strong><br><span class="muted">→ ' + (h.chosenDecisionText || '') + '</span></div>');
+    }
+    host.innerHTML = out.join('');
+  }
+
   function renderObjectives() {
-    const objectivesList = document.getElementById('objectives-list');
+    var objectivesList = document.getElementById('objectives-list');
     if (!objectivesList) return;
-    const objectives = Objectives.getAll();
+    var objectives = Objectives.getAll();
     if (!objectives.length) {
       objectivesList.innerHTML = '<p class="muted">No objectives.</p>';
       return;
     }
     objectivesList.innerHTML = objectives.map(function(o) {
-      const statusClass = o.status === 'done' ? 'obj-done' : (o.status === 'failed' ? 'obj-fail' : 'obj-act');
+      var statusClass = o.status === 'done' ? 'obj-done' : (o.status === 'failed' ? 'obj-fail' : 'obj-act');
       return '<div class="objective ' + statusClass + '">' + o.text + '</div>';
     }).join('');
   }
-  eventBus.subscribe('objectives.updated', renderObjectives);
-  renderObjectives(); // initial render
 
-  // Manual district change flow (simple prompt for now)
-  eventBus.subscribe('ui.district.change.request', () => {
-    const options = listDistricts();
-    const pick = prompt('Move to which district?\n\n- ' + options.join('\n- ') + '\n\nOr type a custom name:', (gameState.character && gameState.character.district) || options[0]);
-    if (!pick) return;
-    changeDistrict(pick);
-  });
-
-  // Start narrative engine
-  nextEvent();
-}
-
-async function nextEvent() {
-  let ev;
-  try {
-    ev = await engine.nextEvent({
-      character: Object.assign({}, gameState.character, {
-        // include evolving role tags explicitly
-        roleTags: gameState.character.roleTags || []
-      }),
-      history: gameState.narrativeHistory,
-      lastEvent: gameState.currentEvent,
-      rails: { maxDecisions: 3, tone: 'gritty-real' }
-    });
-  } catch (e) {
-    console.error(e);
-    ev = { id: 'fallback', title: 'Quiet Night', description: 'Nothing stirs; you gather thoughts.', decisions: [{id: 'cont', text: 'Continue', risk: 20, aggression: 10}] };
+  function inferObjectivesFromRole(character) {
+    var role = (character.role || '').toLowerCase();
+    var objectives = [];
+    if (role.indexOf('musician') !== -1 || role.indexOf('dj') !== -1) {
+      objectives.push({ text: 'Perform at a major venue.' });
+    } else if (role.indexOf('journalist') !== -1 || role.indexOf('investigator') !== -1) {
+      objectives.push({ text: 'Break a major story.' });
+    } else {
+      objectives.push({ text: 'Establish a reputation in the city.' });
+    }
+    return objectives;
   }
 
-  gameState.currentEvent = ev;
-  renderEvent(ev);
-
-  if (ev.imagePrompt) {
-    eventBus.publish('image.request', {
-      ambience: gameState.currentMoods.join(', ') || 'neutral',
-      locale: (gameState.character && gameState.character.district) || 'city',
-      prop: 'none',
-      characterPose: 'idle',
-      attire: (gameState.character && gameState.character.archetype) || 'streetwear',
-      prompt: ev.imagePrompt
-    });
+  // Initial load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
   }
-}
 
-function ensureQuestion(text) {
-  var t = String(text || '').trim();
-  if (!t) return 'What do you do now?';
-  // If it already ends with ? keep it; else append
-  return /[?]\s*$/.test(t) ? t : (t + ' What do you do now?');
-}
-
-function buildRoleSummary() {
-  var c = gameState.character || {};
-  var role = c.role || c.archetype || 'Undefined';
-  return 'You are ' + role + '.';
-}
-
-function renderEvent(event) {
-  document.getElementById('event-title').textContent = event.title;
-  const summary = buildRoleSummary();
-  document.getElementById('event-description').textContent = ensureQuestion(summary + ' ' + event.description);
-  const btns = document.getElementById('decision-buttons');
-  btns.innerHTML = '';
-
-  event.decisions.forEach(function(decision) {
-    const b = document.createElement('button');
-    b.textContent = decision.text;
-    b.onclick = function() { applyDecision(decision); };
-    btns.appendChild(b);
-  });
-
-  // Add first-step helper after rendering decisions
-  var helper=document.getElementById('first-step-hint');
-  if(!helper && gameState.narrativeHistory.length <= 1){
-    helper=document.createElement('div');
-    helper.id='first-step-hint';
-    helper.style.fontSize='12px';
-    helper.style.color='#a0a0c0';
-    helper.style.marginTop='8px';
-    btns.parentNode.appendChild(helper);
-    helper.textContent='Pick an option to continue →';
-  }
-}
-
-function applyDecision(decision) {
-  // 1) Adaptive stats
-  gameState.character.stats.charisma += gameState.rng.pick([-1,0,1]);
-  if (decision.risk > 50) gameState.character.stats.heat += 5;
-  else gameState.character.stats.heat = Math.max(0, gameState.character.stats.heat - 2);
-
-  // 2) Evolve roles
-  driftRoles(decision);
-
-  // 3) District drift (heuristic)
-  maybeDistrictDrift(decision);
-
-  // 4) History
-  const imageUrl = (sceneImageEl && sceneImageEl.src) || '';
-  gameState.narrativeHistory.push({
-    title: gameState.currentEvent.title,
-    chosenDecisionText: decision.text,
-    imageUrl
-  });
-
-  // 5) Events out
-  eventBus.publish('character.stats.updated', gameState.character);
-  eventBus.publish('simlog.push', { text: 'Chose: "' + decision.text + '"' });
-
-  // 5.5) Auto-evaluate objectives
-  Objectives.autoEvaluate(gameState.character);
-
-  // 5.6) Remove first-step helper after first decision
-  var h=document.getElementById('first-step-hint'); if(h) h.parentNode.removeChild(h);
-
-  // 6) Next
-  nextEvent();
-}
-
-function driftRoles(decision){
-  const tags = new Set(gameState.character.roleTags || []);
-  // Use model-sent tags if present
-  (Array.isArray(decision.tags) ? decision.tags : []).forEach(t => tags.add(String(t).toLowerCase()));
-  // Heuristic extraction from text
-  String(decision.text||'')
-    .toLowerCase()
-    .split(/[,/&]| and | with | for | as | into | - |—/g)
-    .map(s=>s.trim())
-    .filter(Boolean)
-    .slice(0,3)
-    .forEach(t => tags.add(t));
-  gameState.character.roleTags = Array.from(tags).slice(0,12);
-  eventBus.publish('career.tags.updated', gameState.character.roleTags);
-}
-
-/** Move districts when choices imply travel/touring/transfer. */
-function maybeDistrictDrift(decision){
-  const text = String(decision.text||'').toLowerCase();
-  const travelCue = ['tour','gig','transfer','relocate','move','skip town','lay low','touring','booking'];
-  const hasCue = travelCue.some(k => text.includes(k)) || (decision.tags||[]).some(t => /tour|gig|transfer|relocate|move|travel/i.test(String(t)));
-  if (!hasCue) return;
-
-  const next = suggestNextDistrict(gameState.character.district, gameState.character.roleTags || [], Date.now());
-  changeDistrict(next);
-}
-
-function changeDistrict(name){
-  if (!isValidDistrict(name)) return;
-  gameState.character.district = String(name);
-  eventBus.publish('district.changed', gameState.character.district);
-  eventBus.publish('simlog.push', { text:`Moved to district → ${gameState.character.district}` });
-}
-
-// Add optional name getter for export convenience
-window.Life = {
-  state: {
-    stats: function() { return (gameState.character && gameState.character.stats) || {}; },
-    name: function() { return (gameState.character && gameState.character.name) || 'Player'; }
-  }
-};
-
-// whenever you add to narrativeHistory, mirror into Story Log panel
-function syncStoryLog() {
-  var host = document.getElementById('story-log'); if (!host) return;
-  var hist = (gameState && gameState.narrativeHistory) || [];
-  var out = [];
-  for (var i=0;i<hist.length;i++){
-    var h = hist[i];
-    out.push('<div class="objective"><strong>'+(h.title||'')+'</strong><br><span class="muted">→ '+(h.chosenDecisionText||'')+'</span></div>');
-  }
-  host.innerHTML = out.join('');
-}
-eventBus.subscribe('simlog.push', syncStoryLog);
-
-startCharacterCreation();
+})(window);

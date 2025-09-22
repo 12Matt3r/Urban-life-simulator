@@ -4,65 +4,69 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Urban Life Simulator</title>
-  <base href="__PUBLIC_BASE_URL__">
   <link rel="stylesheet" href="life.css">
 </head>
 <body>
+
   <!-- App shell for character creation -->
   <div id="app-container">
     <div class="card">
       <h2>Urban Life Simulator</h2>
-      <p class="muted">Loading… if this screen stays, check the Boot Log below.</p>
+      <p class="muted">Loading…</p>
     </div>
   </div>
 
   <!-- Main Game UI (hidden by default) -->
   <div id="main-game-ui" hidden>
-    <div id="top-bar">
-      <button id="hud-save">Save</button>
-      <button id="hud-load">Load</button>
-      <button id="hud-export">Export</button>
-      <button id="hud-story">Story</button>
-      <button id="hud-community">Community</button>
-      <button id="hud-glasshouse">Glass House</button>
-      <button id="hud-music">Music</button>
-      <button id="hud-auto">Auto</button>
+    <div id="top-action-bar">
+      <div class="top-bar-left">
+        <h1 class="game-title">Urban Life Simulator</h1>
+        <div id="adult-mode-badge" class="badge" hidden>Adult Mode</div>
+      </div>
+      <div class="top-bar-center">
+        <input type="text" id="action-input" placeholder="What do you do now?">
+        <button id="action-btn">Act</button>
+      </div>
+      <div class="top-bar-right">
+        <button id="quick-save">Save</button>
+        <button id="quick-load">Load</button>
+        <button id="quick-export">Export</button>
+        <button id="change-district">Change District</button>
+        <button id="career-log">Career Log</button>
+        <button id="glass-house">Glass House</button>
+      </div>
     </div>
-    <div id="game-columns">
-      <div id="left-column">
-        <div id="objectives-card" class="card">
+
+    <div id="main-container">
+      <div id="left-panel">
+        <div id="scene-image-container">
+          <img id="scene-image" src="https://placehold.co/800x450/1a1a2e/e0e0e0?text=Urban+Life" alt="Scene">
+        </div>
+        <div id="event-container">
+          <h3 id="event-title">Welcome</h3>
+          <p id="event-description">Your story begins here.</p>
+          <div id="decision-buttons"></div>
+        </div>
+        <div id="objectives-section">
           <h4>Objectives</h4>
           <div id="objectives-list"></div>
         </div>
-        <div id="storyline-card" class="card">
-          <h3 id="event-title"></h3>
-          <p id="event-description"></p>
-          <div id="decision-buttons"></div>
+        <div id="story-log-viewer">
+          <h4>Story Log <button id="toggle-story-log">Expand</button></h4>
+          <div id="story-log-content" hidden></div>
         </div>
       </div>
-      <div id="right-column">
-        <div id="hud-card" class="card">
-          <div id="hud-mount"></div>
-        </div>
-        <div id="player-dashboard-tabs" class="card">
-          <div class="tabs">
-            <button class="active" data-tab="items">Items</button>
-            <button data-tab="weapons">Weapons</button>
-            <button data-tab="armor">Armor</button>
-            <button data-tab="rings">Rings</button>
-            <button data-tab="encounters">Encounters</button>
+      <div id="right-panel">
+        <div id="player-dashboard">
+          <h2 id="player-name"></h2>
+          <p id="player-role"></p>
+          <p id="player-district"></p>
+          <div id="stats-grid"></div>
+          <div id="wanted-stars"></div>
+          <div id="time-weather">
+            <span id="time-readout"></span> | <span id="weather-readout"></span>
           </div>
-          <div id="player-dashboard-content">
-            <p class="muted">Feature not yet implemented.</p>
-          </div>
-        </div>
-        <div id="traits-card" class="card">
-          <h4>Traits</h4>
-          <p class="muted">Feature not yet implemented.</p>
-        </div>
-        <div id="skill-tree-card" class="card">
-          <h4>Skill Tree</h4>
-          <p class="muted">Feature not yet implemented.</p>
+          <div id="radio-dock"></div>
         </div>
       </div>
     </div>
@@ -70,28 +74,28 @@
 
   <!-- Collapsible Sim Log -->
   <div id="sim-log-container" class="collapsed">
-    <h4>Simulation Log <button id="simlog-toggle-btn" title="Expand/Collapse">▸</button></h4>
+    <h4>Simulation Log <button id="toggle-sim-log">▸</button></h4>
     <div id="sim-log"></div>
   </div>
 
-  <!-- Modals -->
-  <div id="glass-house-overlay" class="modal-overlay" hidden></div>
-  <div id="community-hub" class="modal-overlay" hidden></div>
-  <div id="career-log-modal" class="modal-overlay" hidden></div>
+  <!-- Backrooms Panel -->
+  <div id="backrooms-panel" hidden style="position:relative; border:1px solid #3a3a5e; margin-top:8px;">
+    <div style="position:absolute; right:8px; top:6px; z-index:2;">
+      <button id="bk-close">Close</button>
+    </div>
+    <iframe id="backrooms-frame" title="Backrooms" style="width:100%; height:420px; border:0;" loading="lazy"></iframe>
+  </div>
+  <script>
+    window.ULS_BRIDGE = window.ULS_BRIDGE || {};
+    // TODO: set your actual URL:
+    window.ULS_BRIDGE.BACKROOMS_URL = "https://websim.com/@Speedymule6858/the-backrooms-simulator?embed=1";
+  </script>
 
-  <!-- WebSim Narrator wormhole -->
-  <iframe id="websim-narrator"
-    src="https://websim.com/@SOFAKINGSADBOI/narrator-api"
-    style="width:0;height:0;border:0;position:absolute;left:-9999px;"
-    referrerpolicy="no-referrer"
-    sandbox="allow-scripts allow-same-origin"></iframe>
-
-  <!-- Boot log overlay so you never get a silent white screen -->
-  <div id="boot-status"><b>Boot log</b><pre id="boot-log" style="white-space:pre-wrap;margin-top:6px"></pre></div>
-
-  <!-- Load scripts in proper order -->
-  <script src="env.js"></script>
-  <script src="bootlog.js"></script>
+  <!-- Scripts -->
+  <script src="env.js" defer></script>
+  <script type="module" src="systems/eventBus.js"></script>
+  <script type="module" src="systems/backroomsBridge.js"></script>
   <script type="module" src="life_script.js"></script>
+  <script src="ui/hud.backrooms.js"></script>
 </body>
 </html>

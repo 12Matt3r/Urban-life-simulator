@@ -1,85 +1,75 @@
-// ui/careerLog.js
-import { entries, clear, exportMarkdown } from '../systems/careerLog.js';
-import { eventBus } from '../systems/eventBus.js';
+// ui/careerLog.js (ES5)
+(function(global) {
+  var root;
 
-let root;
+  function mountCareerLogModal(containerId) {
+    containerId = containerId || 'career-log-modal';
+    var existing = document.getElementById(containerId);
+    if (existing) {
+      root = existing;
+      return;
+    }
 
-export function mountCareerLogModal(containerId = 'career-log-modal') {
-  const existing = document.getElementById(containerId);
-  if (existing) { root = existing; return; }
+    var html = [
+      '<div id="' + containerId + '" class="modal-overlay" hidden>',
+        '<div class="modal-content" style="gap:10px;">',
+          '<div style="display:flex; justify-content:space-between; align-items:center;">',
+            '<h2>Career Log</h2>',
+            '<div style="display:flex; gap:8px;">',
+              '<button id="cl-export">Export</button>',
+              '<button id="cl-clear">Clear</button>',
+              '<button id="cl-close">X</button>',
+            '</div>',
+          '</div>',
+          '<div id="cl-list" style="flex:1; overflow:auto; border:1px solid #3a3a5e; border-radius:8px; padding:10px;"></div>',
+        '</div>',
+      '</div>'
+    ].join('');
+    document.body.insertAdjacentHTML('beforeend', html);
+    root = document.getElementById(containerId);
 
-  const html = `
-    <div id="${containerId}" class="modal-overlay" hidden>
-      <div class="modal-content" style="gap:10px;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h2>Career Log</h2>
-          <div style="display:flex; gap:8px;">
-            <button id="cl-export">Export</button>
-            <button id="cl-clear">Clear</button>
-            <button id="cl-close">X</button>
-          </div>
-        </div>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <label>Filter</label>
-          <select id="cl-filter">
-            <option value="all">All</option>
-            <option value="role">Role</option>
-            <option value="district">District</option>
-          </select>
-        </div>
-        <div id="cl-list" style="flex:1; overflow:auto; border:1px solid #3a3a5e; border-radius:8px; padding:10px;"></div>
-      </div>
-    </div>`;
-  document.body.insertAdjacentHTML('beforeend', html);
-  root = document.getElementById(containerId);
+    root.querySelector('#cl-close').onclick = function() { root.hidden = true; };
+    root.querySelector('#cl-clear').onclick = function() { if (confirm('Clear career log?')) { global.CareerLog.clear(); } };
+    root.querySelector('#cl-export').onclick = function() {
+      var playerName = (global.Life && global.Life.state && global.Life.state.name && global.Life.state.name()) || 'Player';
+      var md = global.CareerLog.exportMarkdown(playerName);
+      var blob = new Blob([md], { type: 'text/markdown' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'career_log_' + Date.now() + '.md';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    };
 
-  const closeBtn = root.querySelector('#cl-close');
-  const clearBtn = root.querySelector('#cl-clear');
-  const exportBtn = root.querySelector('#cl-export');
-  const filterSel = root.querySelector('#cl-filter');
-  const listEl = root.querySelector('#cl-list');
+    global.eventBus.subscribe('career.log.updated', render);
+    render();
+  }
 
   function render() {
-    const filter = filterSel.value;
-    const data = entries().filter(function(e) { return filter === 'all' ? true : e.kind === filter; });
-    if (!data.length) { listEl.innerHTML = '<p class="muted">No entries yet.</p>'; return; }
+    if (!root) return;
+    var listEl = root.querySelector('#cl-list');
+    var data = global.CareerLog.entries();
+    if (!data.length) {
+      listEl.innerHTML = '<p class="muted">No entries yet.</p>';
+      return;
+    }
     listEl.innerHTML = data.map(function(e) {
-      const when = new Date(e.ts).toLocaleString();
-      const tagStr = (e.tags && e.tags.length) ? '<span class="muted"> [' + e.tags.join(', ') + ']</span>' : '';
+      var when = new Date(e.ts).toLocaleString();
+      var tagStr = (e.tags && e.tags.length) ? '<span class="muted"> [' + e.tags.join(', ') + ']</span>' : '';
       return '<div style="margin-bottom:8px;">' +
-        '<strong>' + when + '</strong> — ' + (e.kind === 'role' ? 'Role' : 'District') + ': ' + escapeHtml(e.detail) + tagStr +
+        '<strong>' + when + '</strong> — ' + e.kind + ': ' + e.detail + tagStr +
       '</div>';
     }).join('');
   }
 
-  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-  closeBtn.onclick = function() { root.hidden = true; };
-  clearBtn.onclick = function() { if (confirm('Clear career log?')) { clear(); } };
-  exportBtn.onclick = function() {
-    const playerName = (window && window.Life && window.Life.state && window.Life.state.name && window.Life.state.name()) || 'Player';
-    const md = exportMarkdown(playerName);
-    const blob = new Blob([md], { type: 'text/markdown' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'career_log_' + Date.now() + '.md';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-  };
-  filterSel.onchange = render;
-
-  eventBus.subscribe('career.log.updated', render);
-  render();
-}
-
-export function openCareerLogModal() {
-  if (!root) mountCareerLogModal();
-  root.hidden = false;
-  // trigger render once opened (in case of stale)
-  const filterEl = document.getElementById('cl-filter');
-  if (filterEl) {
-    filterEl.dispatchEvent(new Event('change'));
+  function openCareerLogModal() {
+    if (!root) mountCareerLogModal();
+    root.hidden = false;
+    render();
   }
-}
+
+  global.eventBus.subscribe('hud.careerlog', openCareerLogModal);
+
+})(window);
