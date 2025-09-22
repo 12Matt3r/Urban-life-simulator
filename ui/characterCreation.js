@@ -98,6 +98,9 @@ export function mountCharacterCreation(container, settings, onComplete) {
     radio.onchange = function() {
       adultMode = this.value === 'adult';
       if (settings) settings.adultMode = adultMode;
+      try {
+        localStorage.setItem('uls_adultMode', adultMode);
+      } catch (e) {}
       renderIdeas();
     };
   });
