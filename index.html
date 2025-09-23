@@ -1,101 +1,405 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Urban Life Simulator</title>
-  <link rel="stylesheet" href="life.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Urban Life Simulator — Production</title>
+  <link rel="stylesheet" href="life.css" />
+
+  <!-- Basic app shell styles (optional hardening) -->
+  <style>
+    html, body { height: 100%; margin: 0; background:#0c0f12; color:#e8eef6; font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif }
+    #app-container, #main-game-ui { max-width: 1100px; margin: 0 auto; padding: 16px; }
+    .muted { opacity: .75 }
+    #main-game-ui[hidden], #app-container[hidden] { display: none !important; }
+    #hud-mount { margin-top: 8px; }
+    #scene { display:flex; gap:16px; align-items:flex-start; }
+    #scene-image { width: 420px; max-width: 48vw; height: auto; border-radius: 8px; background:#111; border:1px solid #2a2f3a }
+    #event { flex:1 }
+    #event-title { font-weight:700; font-size: 1.25rem; margin: 0 0 8px }
+    #event-description { white-space: pre-wrap; line-height: 1.4 }
+    #decision-buttons { display:flex; flex-wrap:wrap; gap:8px; margin: 12px 0 }
+    #decision-buttons button { background:#243043; color:#e8eef6; border:1px solid #2a384d; border-radius:8px; padding:10px 12px; cursor:pointer }
+    #decision-buttons button:hover { background:#2d3b53 }
+    #action-bar { display:flex; gap:8px; margin-top:12px }
+    #action-input { flex:1; padding:10px 12px; border-radius:8px; border:1px solid #2a2f3a; background:#111723; color:#e8eef6 }
+    #action-btn { padding:10px 14px; border-radius:8px; border:1px solid #2a2f3a; background:#36517a; color:#fff; cursor:pointer }
+    #panels { display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-top: 16px }
+    #story-log, #sim-log-container, #objectives { background:#0f141b; border:1px solid #222a36; border-radius:10px; padding:12px; min-height:120px }
+    .log-entry { padding:8px 0; border-bottom:1px dashed #253043 }
+    .log-entry:last-child { border-bottom:none }
+    #sim-log-header { display:flex; align-items:center; justify-content:space-between }
+    #toggle-sim-log { background:transparent; color:#9fb1ca; border:0; font-size:18px; cursor:pointer }
+    #sim-log-container.collapsed .sim-body { display:none }
+    /* Backrooms panel/iframe (hidden by default; shown by events) */
+    #backrooms-panel { position: fixed; inset: 0; background: rgba(6, 10, 16, 0.96); padding: 2vh 2vw; z-index: 9999 }
+    #backrooms-panel[hidden] { display: none !important; }
+    #backrooms-inner { position: relative; height: 96vh; width: 96vw; }
+    #bk-close { position: absolute; top: 8px; right: 8px; z-index: 2; }
+    #backrooms-frame { position:absolute; inset: 0; width: 100%; height: 100%; border: 1px solid #2a2f3a; border-radius: 10px; background: #000 }
+  </style>
 </head>
 <body>
-
-  <!-- App shell for character creation -->
+  <!-- Character creation host -->
   <div id="app-container">
-    <div class="card">
-      <h2>Urban Life Simulator</h2>
-      <p class="muted">Loading…</p>
-    </div>
+    <!-- Your character creation UI mounts here (from your ui/* scripts) -->
   </div>
 
-  <!-- Main Game UI (hidden by default) -->
+  <!-- Main game UI -->
   <div id="main-game-ui" hidden>
-    <div id="top-action-bar">
-      <div class="top-bar-left">
-        <h1 class="game-title">Urban Life Simulator</h1>
-        <div id="adult-mode-badge" class="badge" hidden>Adult Mode</div>
-      </div>
-      <div class="top-bar-center">
-        <input type="text" id="action-input" placeholder="What do you do now?">
-        <button id="action-btn">Act</button>
-      </div>
-      <div class="top-bar-right">
-        <button id="quick-save">Save</button>
-        <button id="quick-load">Load</button>
-        <button id="quick-export">Export</button>
-        <button id="change-district">Change District</button>
-        <button id="career-log">Career Log</button>
-        <button id="glass-house">Glass House</button>
+    <div id="hud-mount"></div>
+
+    <div id="scene" style="margin-top:12px">
+      <img id="scene-image" alt="Scene"/>
+      <div id="event">
+        <h2 id="event-title"></h2>
+        <p id="event-description" class="muted"></p>
+        <div id="decision-buttons"></div>
+
+        <div id="action-bar">
+          <input id="action-input" type="text" placeholder="Type an action…" />
+          <button id="action-btn">Do it</button>
+        </div>
       </div>
     </div>
 
-    <div id="main-container">
-      <div id="left-panel">
-        <div id="scene-image-container">
-          <img id="scene-image" src="https://placehold.co/800x450/1a1a2e/e0e0e0?text=Urban+Life" alt="Scene">
+    <div id="panels">
+      <div id="objectives">
+        <h3 style="margin-top:0">Objectives</h3>
+        <div id="objectives-list" class="muted"></div>
+      </div>
+
+      <div id="sim-log-container">
+        <div id="sim-log-header">
+          <h3 style="margin:0">SIM Log</h3>
+          <button id="toggle-sim-log" title="Collapse / Expand">▾</button>
         </div>
-        <div id="event-container">
-          <h3 id="event-title">Welcome</h3>
-          <p id="event-description">Your story begins here.</p>
-          <div id="decision-buttons"></div>
-        </div>
-        <div id="objectives-section">
-          <h4>Objectives</h4>
-          <div id="objectives-list"></div>
-        </div>
-        <div id="story-log-viewer">
-          <h4>Story Log <button id="toggle-story-log">Expand</button></h4>
-          <div id="story-log-content" hidden></div>
+        <div class="sim-body">
+          <!-- your sim log UI will populate this via eventBus -->
         </div>
       </div>
-      <div id="right-panel">
-        <div id="player-dashboard">
-          <h2 id="player-name"></h2>
-          <p id="player-role"></p>
-          <p id="player-district"></p>
-          <div id="stats-grid"></div>
-          <div id="wanted-stars"></div>
-          <div id="time-weather">
-            <span id="time-readout"></span> | <span id="weather-readout"></span>
-          </div>
-          <div id="radio-dock"></div>
-        </div>
+
+      <div id="story-log">
+        <h3 style="margin-top:0">Story Log</h3>
+        <!-- filled by script -->
       </div>
+      <div><!-- spacer / extra panel slot --></div>
     </div>
   </div>
 
-  <!-- Collapsible Sim Log -->
-  <div id="sim-log-container" class="collapsed">
-    <h4>Simulation Log <button id="toggle-sim-log">▸</button></h4>
-    <div id="sim-log"></div>
-  </div>
-
-  <!-- Backrooms Panel -->
-  <div id="backrooms-panel" hidden style="position:relative; border:1px solid #3a3a5e; margin-top:8px;">
-    <div style="position:absolute; right:8px; top:6px; z-index:2;">
+  <!-- Backrooms overlay (hidden until opened) -->
+  <section id="backrooms-panel" hidden>
+    <div id="backrooms-inner">
       <button id="bk-close">Close</button>
+      <iframe
+        id="backrooms-frame"
+        title="Backrooms"
+        allow="autoplay; fullscreen"
+        referrerpolicy="no-referrer"
+      ></iframe>
     </div>
-    <iframe id="backrooms-frame" title="Backrooms" style="width:100%; height:420px; border:0;" loading="lazy"></iframe>
-  </div>
-  <script>
-    window.ULS_BRIDGE = window.ULS_BRIDGE || {};
-    // TODO: set your actual URL:
-    window.ULS_BRIDGE.BACKROOMS_URL = "https://websim.com/@Speedymule6858/the-backrooms-simulator?embed=1";
-  </script>
+  </section>
 
-  <!-- Scripts -->
-  <script src="env.js" defer></script>
-  <script type="module" src="systems/eventBus.js"></script>
-  <script type="module" src="systems/backroomsBridge.js"></script>
-  <script type="module" src="life_script.js"></script>
+  <!-- Your existing app/runtime modules (adjust paths if needed) -->
+  <!-- Core systems -->
+  <script src="systems/eventBus.js"></script>
+  <script src="systems/time.js"></script>
+  <script src="systems/weather.js"></script>
+  <script src="systems/objectives.js"></script>
+  <script src="systems/backroomsBridge.js"></script>
+  <script src="systems/narrativeEngine.js"></script>
+
+  <!-- UI modules -->
+  <script src="ui/characterCreation.js"></script>
+  <script src="ui/hud.js"></script>
+  <script src="ui/shop.js"></script>
   <script src="ui/hud.backrooms.js"></script>
+
+
+  <!-- ===== HOTPATCH: final life_script.js baked in (runs last, overrides previous) ===== -->
+  <script>
+  // life_script.js (ES5) — FINAL
+  (function(global) {
+    // Backrooms integration config
+    var BACKROOMS_TARGET_STORYLINE_PROB = 0.25;
+    var BACKROOMS_AVG_TURNS_PER_STORY   = 20;
+    function computePerTurnBaseProb(target, avgTurns) {
+      return 1 - Math.pow(1 - target, 1 / Math.max(1, avgTurns));
+    }
+    var backroomsState = {
+      inBackrooms: false,
+      glitchedThisStoryline: false,
+      turnsElapsed: 0,
+      lastGlitchTs: 0,
+      cooldownMs: 120000
+    };
+    var BACKROOMS_BASE_PER_TURN = computePerTurnBaseProb(
+      BACKROOMS_TARGET_STORYLINE_PROB,
+      BACKROOMS_AVG_TURNS_PER_STORY
+    );
+
+    // DOM refs
+    var appContainer = document.getElementById('app-container');
+    var mainGameUI = document.getElementById('main-game-ui');
+    var sceneImageEl;
+    var narrativeEngine;
+
+    // Game state
+    var gameState = {
+      character: null,
+      narrativeHistory: [],
+      currentEvent: null,
+      calmTurns: 0,
+      settings: { adultMode: false }
+    };
+
+    // ——— Backrooms gate
+    function maybeGlitchIntoBackrooms(decision) {
+      if (backroomsState.inBackrooms || backroomsState.glitchedThisStoryline) return;
+      if (Date.now() - backroomsState.lastGlitchTs < backroomsState.cooldownMs) return;
+
+      // Base probability increases slightly with elapsed turns; capped
+      var p = BACKROOMS_BASE_PER_TURN * (1 + Math.min(0.5, (backroomsState.turnsElapsed || 0) / 40));
+
+      // Light thematic cues nudge chance up a hair
+      var txt = String((decision && decision.text) || '').toLowerCase();
+      var cues = ['dark', 'hall', 'stair', 'elevator', 'warehouse', 'maintenance', 'basement', 'flee', 'run', 'hide', 'sleep', 'noclip'];
+      for (var i=0; i<cues.length; i++) { if (txt.indexOf(cues[i]) !== -1) { p += 0.01; break; } }
+      if (p > 0.04) p = 0.04;
+
+      if (Math.random() >= p) return;
+
+      backroomsState.inBackrooms = true;
+      backroomsState.glitchedThisStoryline = true;
+      backroomsState.lastGlitchTs = Date.now();
+      global.eventBus.publish('backrooms.open');
+    }
+
+    // ——— App init
+    function init() {
+      if (!global.eventBus) { console.error('eventBus not found!'); return; }
+
+      try {
+        var savedAdultMode = localStorage.getItem('uls_adultMode');
+        if (savedAdultMode) gameState.settings.adultMode = JSON.parse(savedAdultMode);
+      } catch (e) {}
+
+      if (global.BackroomsBridge) { global.BackroomsBridge.init(global.eventBus); }
+
+      // Allow ?engine=websim to switch adapter
+      var urlParams = new URLSearchParams(global.location.search);
+      var engineMode = (urlParams.get('engine') === 'websim') ? 'websim' : 'local';
+      narrativeEngine = createNarrativeEngine({ mode: engineMode });
+
+      setupEventListeners();
+      startCharacterCreation();
+    }
+
+    // ——— Character creation → main game
+    function startCharacterCreation() {
+      backroomsState.inBackrooms = false;
+      backroomsState.glitchedThisStoryline = false;
+      backroomsState.turnsElapsed = 0;
+
+      mainGameUI.hidden = true;
+      appContainer.hidden = false;
+
+      // Mount your character creation UI from ui/characterCreation.js
+      mountCharacterCreation(appContainer, gameState.settings, function(character) {
+        gameState.character = character;
+        gameState.character.stats = character.stats || {
+          strength: 5, dexterity: 5, constitution: 5, intelligence: 5, wisdom: 5, charisma: 5,
+          heat: 0, money: 100, health: 100, reputation: 0
+        };
+        gameState.character.district = character.district || 'Greyline District';
+
+        // Normalize role capitalization
+        var role = character.role || 'Wanderer';
+        gameState.character.role = role.split(' ').map(function(w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' ');
+
+        Objectives.reset(inferObjectivesFromRole(gameState.character));
+
+        appContainer.hidden = true;
+        startMainGame();
+      });
+    }
+
+    function startMainGame() {
+      mainGameUI.hidden = false;
+      mountHUD(document.getElementById('hud-mount'), gameState.character, global.eventBus);
+
+      sceneImageEl = document.getElementById('scene-image');
+
+      // SIM log collapse/restore
+      var simLogContainer = document.getElementById('sim-log-container');
+      var simLogToggle = document.getElementById('toggle-sim-log');
+      if (simLogToggle) {
+        simLogToggle.onclick = function() {
+          var isCollapsed = simLogContainer.classList.toggle('collapsed');
+          simLogToggle.textContent = isCollapsed ? '▸' : '▾';
+          localStorage.setItem('uls_simLogCollapsed', isCollapsed);
+        };
+        if (localStorage.getItem('uls_simLogCollapsed') === 'true') {
+          simLogContainer.classList.add('collapsed');
+          simLogToggle.textContent = '▸';
+        }
+      }
+
+      // Kick off the first turn
+      handleAction({ text: "The simulation begins." });
+    }
+
+    // ——— Wiring
+    function setupEventListeners() {
+      var actionInput = document.getElementById('action-input');
+      var actionBtn = document.getElementById('action-btn');
+      actionBtn.onclick = function() {
+        var text = actionInput.value.trim();
+        if (text) { handleAction({ text: text }); actionInput.value = ''; }
+      };
+      actionInput.onkeydown = function(e) { if (e.key === 'Enter') actionBtn.click(); };
+
+      global.eventBus.subscribe('backrooms.response', handleEngineResponse);
+      global.eventBus.subscribe('backrooms.closed', function() { gameState.inBackrooms = false; });
+
+      global.eventBus.subscribe('objectives.updated', renderObjectives);
+
+      global.eventBus.subscribe('shop.buy', function(item) {
+        if (gameState.character.stats.money >= item.price) {
+          gameState.character.stats.money -= item.price;
+          global.eventBus.publish('character.stats.updated', gameState.character);
+          alert('You bought ' + item.name + ' for $' + item.price);
+        } else {
+          alert("You don't have enough money.");
+        }
+      });
+    }
+
+    // ——— Turn handling
+    function handleAction(playerAction) {
+      global.eventBus.publish('applyDecision', playerAction);
+      maybeGlitchIntoBackrooms(playerAction);
+
+      if (gameState.inBackrooms) {
+        global.eventBus.publish('backrooms.send', playerAction);
+        return;
+      }
+
+      var context = {
+        actionText: playerAction.text,
+        character: gameState.character,
+        history: gameState.narrativeHistory,
+        contentMode: gameState.settings.adultMode ? 'adult' : 'standard',
+        time: global.TimeSystem.getCurrent(),
+        weather: global.WeatherSystem.getCurrent(),
+        district: gameState.character.district
+      };
+      narrativeEngine.nextTurn(context).then(handleEngineResponse);
+    }
+
+    function handleEngineResponse(response) {
+      gameState.currentEvent = response;
+      renderEvent(response);
+
+      if (response.statChanges) {
+        var heatChange = 0;
+        for (var stat in response.statChanges) {
+          if (gameState.character.stats.hasOwnProperty(stat)) {
+            gameState.character.stats[stat] += response.statChanges[stat];
+            if (stat === 'heat') heatChange = response.statChanges[stat];
+          }
+        }
+        // Wanted Stars / Heat decay logic
+        if (heatChange > 0) { gameState.calmTurns = 0; } else { gameState.calmTurns++; }
+        if (gameState.calmTurns >= 4) {
+          gameState.character.stats.heat = Math.max(0, gameState.character.stats.heat - (Math.floor(Math.random() * 3) + 3));
+          gameState.calmTurns = 0;
+        }
+        global.eventBus.publish('character.stats.updated', gameState.character);
+      }
+
+      gameState.narrativeHistory.push({ title: response.title, chosenDecisionText: response.description });
+      backroomsState.turnsElapsed++;
+      syncStoryLog();
+      Objectives.autoEvaluate(gameState.character);
+      global.eventBus.publish('simlog.push', { topic: 'SIM', message: response.title });
+    }
+
+    // ——— Rendering
+    function renderEvent(event) {
+      document.getElementById('event-title').textContent = event.title;
+      document.getElementById('event-description').textContent = ensureQuestion(event.description);
+
+      var buttonsContainer = document.getElementById('decision-buttons');
+      buttonsContainer.innerHTML = '';
+      if (event.decisions) {
+        for (var i=0; i<event.decisions.length; i++) {
+          (function(decision){
+            var button = document.createElement('button');
+            button.textContent = decision.text;
+            button.onclick = function() { handleAction(decision); };
+            buttonsContainer.appendChild(button);
+          })(event.decisions[i]);
+        }
+      }
+    }
+
+    function ensureQuestion(t) {
+      t = String(t || '').trim();
+      return /[?].\s*$/.test(t) ? t : (t + ' What do you do now?');
+    }
+
+    function syncStoryLog() {
+      var host = document.getElementById('story-log');
+      if (!host) return;
+      var hist = gameState.narrativeHistory.slice().reverse();
+      var out = [];
+      for (var i=0; i<hist.length; i++) {
+        var h = hist[i];
+        out.push('<div class="log-entry"><strong>' + (h.title || '') + '</strong><br><span class="muted">→ ' + (h.chosenDecisionText || '') + '</span></div>');
+      }
+      host.innerHTML = out.join('');
+    }
+
+    function renderObjectives() {
+      var objectivesList = document.getElementById('objectives-list');
+      if (!objectivesList) return;
+      var objectives = Objectives.getAll();
+      if (!objectives || !objectives.length) {
+        objectivesList.innerHTML = '<p class="muted">No objectives.</p>';
+        return;
+      }
+      var out = [];
+      for (var i=0; i<objectives.length; i++) {
+        var o = objectives[i];
+        var statusClass = o.status === 'done' ? 'obj-done' : (o.status === 'failed' ? 'obj-fail' : 'obj-act');
+        out.push('<div class="objective ' + statusClass + '">' + o.text + '</div>');
+      }
+      objectivesList.innerHTML = out.join('');
+    }
+
+    function inferObjectivesFromRole(character) {
+      var role = (character.role || '').toLowerCase();
+      var objectives = [];
+      if (role.indexOf('musician') !== -1 || role.indexOf('dj') !== -1) {
+        objectives.push({ text: 'Perform at a major venue.' });
+      } else if (role.indexOf('journalist') !== -1 || role.indexOf('investigator') !== -1) {
+        objectives.push({ text: 'Break a major story.' });
+      } else {
+        objectives.push({ text: 'Establish a reputation in the city.' });
+      }
+      return objectives;
+    }
+
+    // Boot
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  })(window);
+  </script>
+  <!-- ===== /HOTPATCH ===== -->
+
 </body>
 </html>
