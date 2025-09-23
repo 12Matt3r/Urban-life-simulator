@@ -1,53 +1,38 @@
-// systems/careerLog.js (ES5)
-(function(global) {
-  var entries = [];
+// systems/careerLog.js
+import { eventBus } from './eventBus.js';
 
-  function add(kind, detail, tags) {
-    entries.push({
-      ts: Date.now(),
-      kind: kind,
-      detail: detail,
-      tags: tags || []
-    });
-    global.eventBus.publish('career.log.updated', entries);
+const _log = []; // [{ts:number, kind:'role'|'district', detail:string, tags?:string[] }]
+
+export function entries() { return _log.slice(); }
+
+export function add(kind, detail, tags = []) {
+  _log.push({ ts: Date.now(), kind, detail, tags: Array.isArray(tags) ? tags.slice(0, 12) : [] });
+  eventBus.publish('career.log.updated', entries());
+}
+
+export function clear() {
+  _log.length = 0;
+  eventBus.publish('career.log.updated', entries());
+}
+
+export function exportMarkdown(characterName) {
+  if (characterName === void 0) { characterName = 'Player'; }
+  const lines = ['# ' + characterName + ' — Career Log', ''];
+  for (const e of _log) {
+    const when = new Date(e.ts).toLocaleString();
+    const tagStr = (e.tags && e.tags.length) ? '  _[' + e.tags.join(', ') + ']_' : '';
+    lines.push('- **' + when + '** — ' + (e.kind === 'role' ? 'Role' : 'District') + ': ' + e.detail + tagStr);
   }
+  return lines.join('\n');
+}
 
-  function clear() {
-    entries = [];
-    global.eventBus.publish('career.log.updated', entries);
-  }
+// Auto-subscribe: record role and district changes
+eventBus.subscribe('career.tags.updated', (tags = []) => {
+  if (!tags.length) return;
+  add('role', `Roles updated`, tags);
+});
 
-  function getEntries() {
-    return entries.slice();
-  }
-
-  function exportMarkdown(playerName) {
-    var md = '# Career Log for ' + playerName + '\n\n';
-    entries.forEach(function(e) {
-      var when = new Date(e.ts).toLocaleString();
-      var tagStr = (e.tags && e.tags.length) ? ' [' + e.tags.join(', ') + ']' : '';
-      md += '## ' + when + ' - ' + e.kind + '\n';
-      md += '> ' + e.detail + tagStr + '\n\n';
-    });
-    return md;
-  }
-
-  global.CareerLog = {
-    add: add,
-    clear: clear,
-    entries: getEntries,
-    exportMarkdown: exportMarkdown
-  };
-
-  // Auto-subscribe: record role and district changes
-  global.eventBus.subscribe('career.tags.updated', function(tags) {
-    if (!tags || !tags.length) return;
-    add('role', 'Roles updated', tags);
-  });
-
-  global.eventBus.subscribe('district.changed', function(name) {
-    if (!name) return;
-    add('district', 'Moved to ' + name);
-  });
-
-})(window);
+eventBus.subscribe('district.changed', (name) => {
+  if (!name) return;
+  add('district', `Moved to ${name}`);
+});
