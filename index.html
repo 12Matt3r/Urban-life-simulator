@@ -4,46 +4,54 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>ULS</title>
-  <link rel="stylesheet" href="life.css" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <!-- App container will be populated by realm modules -->
   <div id="app-root"></div>
 
-  <!-- Demo nav -->
-  <nav style="position:fixed;inset:auto 0 0 0;display:flex;gap:.5rem;justify-content:center;padding:.5rem;background:#111;color:#fff;z-index:10000">
-    <button data-go="uls">ULS</button>
-    <button data-go="living-hell">Living Hell</button>
-    <button data-go="dreamworld">Dreamworld</button>
-  </nav>
+  <!-- Kernel -->
+  <script type="module" src="kernel/eventBus.js"></script>
+  <script type="module" src="kernel/router.js"></script>
+  <script type="module" src="kernel/state.js"></script>
+  <script type="module" src="kernel/hotpatch.js"></script>
+
+  <!-- Systems -->
+  <script src="systems/narrator.js"></script>
+  <script src="systems/imagegen.js"></script>
+  <script src="systems/music.js"></script>
+  <script src="systems/save.js"></script>
+
+  <!-- UI -->
+  <script src="ui/hud.js"></script>
+  <script src="ui/radio.js"></script>
+  <script src="ui/dialogue.js"></script>
+
+  <!-- Realms -->
+  <script type="module" src="uls/uls.module.js"></script>
+  <script type="module" src="livinghell/lh.module.js"></script>
+  <script type="module" src="backrooms/bk.module.js"></script>
+  <script type="module" src="dreamworld/dw.module.js"></script>
 
   <script type="module">
-    import { router } from './router/realmRouter.js';
-    import { ULS }    from './realms/uls/index.js';
-    // import { LH } from './realms/living-hell/index.js';
-    // import { DW } from './realms/dreamworld/index.js';
+    import { router } from './kernel/router.js';
+    import { eventBus } from './kernel/eventBus.js';
+    import { state } from './kernel/state.js';
 
-    // Placeholder realms for demo
-    const LH = {
-      async boot(){ document.body.dataset.realm='living-hell'; console.log('LH boot'); document.getElementById('app-root').innerHTML = '<h1>Living Hell</h1>'; },
-      async teardown(){ console.log('LH bye'); }
-    };
-    const DW = {
-      async boot(){ document.body.dataset.realm='dreamworld'; console.log('DW boot'); document.getElementById('app-root').innerHTML = '<h1>Dreamworld</h1>'; },
-      async teardown(){ console.log('DW bye'); }
-    };
+    // These are globals from the non-module scripts
+    const ULS = window.ULS;
+    const LH = window.LH;
+    const BK = window.BK;
+    const DW = window.DW;
 
-    router.register('uls', ULS);
-    router.register('living-hell', LH);
-    router.register('dreamworld', DW);
+    router.init(document.getElementById('app-root'), eventBus, state);
 
-    document.addEventListener('click', (e)=>{
-      const t = e.target.closest('[data-go]');
-      if (t) router.go(t.dataset.go);
-    });
+    router.register('ULS', ULS);
+    router.register('LivingHell', LH);
+    router.register('Backrooms', BK);
+    router.register('Dreamworld', DW);
 
-    // Start at ULS
-    router.go('uls');
+    // Start the tutorial
+    router.go('ULS', { isTutorial: true });
   </script>
 </body>
 </html>
