@@ -1,56 +1,49 @@
-<!-- index.html (head includes modules below) -->
-<script type="module">
-  import {router} from './router/realmRouter.js';
-  import {eventBus} from './kernel/eventBus.js';
-  import './kernel/saveState.js';
-  import './kernel/audio.js';
-  import './kernel/imageGen.js';
-  import './kernel/safety.js';
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ULS</title>
+  <link rel="stylesheet" href="life.css" />
+</head>
+<body>
+  <!-- App container will be populated by realm modules -->
+  <div id="app-root"></div>
 
-  // Placeholder realms:
-  const ULS = {
-    async boot(){ document.body.dataset.realm='uls'; console.log('ULS boot'); },
-    async teardown(){ console.log('ULS bye'); }
-  };
-  const LH = {
-    async boot(){ document.body.dataset.realm='living-hell'; console.log('LH boot'); },
-    async teardown(){ console.log('LH bye'); }
-  };
-  const DW = {
-    async boot(){ document.body.dataset.realm='dreamworld'; console.log('DW boot'); },
-    async teardown(){ console.log('DW bye'); }
-  };
+  <!-- Demo nav -->
+  <nav style="position:fixed;inset:auto 0 0 0;display:flex;gap:.5rem;justify-content:center;padding:.5rem;background:#111;color:#fff;z-index:10000">
+    <button data-go="uls">ULS</button>
+    <button data-go="living-hell">Living Hell</button>
+    <button data-go="dreamworld">Dreamworld</button>
+  </nav>
 
-  router.register('uls', ULS);
-  router.register('living-hell', LH);
-  router.register('dreamworld', DW);
+  <script type="module">
+    import { router } from './router/realmRouter.js';
+    import { ULS }    from './realms/uls/index.js';
+    // import { LH } from './realms/living-hell/index.js';
+    // import { DW } from './realms/dreamworld/index.js';
 
-  // Quick demo buttons:
-  document.addEventListener('click', (e)=>{
-    const t = e.target.closest('[data-go]');
-    if (t) router.go(t.dataset.go);
-  });
+    // Placeholder realms for demo
+    const LH = {
+      async boot(){ document.body.dataset.realm='living-hell'; console.log('LH boot'); document.getElementById('app-root').innerHTML = '<h1>Living Hell</h1>'; },
+      async teardown(){ console.log('LH bye'); }
+    };
+    const DW = {
+      async boot(){ document.body.dataset.realm='dreamworld'; console.log('DW boot'); document.getElementById('app-root').innerHTML = '<h1>Dreamworld</h1>'; },
+      async teardown(){ console.log('DW bye'); }
+    };
 
-  // Start at ULS
-  router.go('uls');
+    router.register('uls', ULS);
+    router.register('living-hell', LH);
+    router.register('dreamworld', DW);
 
-  // Safety formatter demo
-  var safetyDemoBtn = document.createElement('button');
-  safetyDemoBtn.textContent = 'Test Safety Formatter';
-  safetyDemoBtn.style.cssText = 'position:fixed;top:10px;left:10px;';
-  document.body.appendChild(safetyDemoBtn);
-  safetyDemoBtn.onclick = function() {
-    import('./kernel/safety.js').then(function(module) {
-      var safety = module.safety;
-      console.log('PG mode:', safety.mode);
-      console.log('Formatted:', safety.formatForOutput('this is some fucking test string'));
+    document.addEventListener('click', (e)=>{
+      const t = e.target.closest('[data-go]');
+      if (t) router.go(t.dataset.go);
     });
-  };
-</script>
 
-<!-- Somewhere in body for demo -->
-<nav style="position:fixed;inset:auto 0 0 0;display:flex;gap:.5rem;justify-content:center;padding:.5rem;background:#111;color:#fff">
-  <button data-go="uls">ULS</button>
-  <button data-go="living-hell">Living Hell</button>
-  <button data-go="dreamworld">Dreamworld</button>
-</nav>
+    // Start at ULS
+    router.go('uls');
+  </script>
+</body>
+</html>
