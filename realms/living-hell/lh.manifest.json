@@ -1,0 +1,8 @@
+{
+  "id": "living-hell",
+  "name": "Living Hell",
+  "version": "0.1.0",
+  "entry": "./main.js",
+  "mountpoint": "#realm-root",
+  "capabilities": ["chat-control", "tts", "autopilot", "pg-mode"]
+}
