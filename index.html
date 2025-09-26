@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>ULS • Dev Pack + Harness (Self-Contained)</title>
+<title>ULS • Integrated Game Client</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
   :root {
@@ -14,24 +14,17 @@
   h1 { font-size: 20px; margin: 0 0 8px; }
   p { color: var(--muted); margin: 0 0 12px; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
-  .hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
-  .badge { display: inline-block; background: #121a14; border: 1px solid #143726; color: #73ffcb; padding: 2px 8px; border-radius: 999px; font-size: 12px; margin-right: 6px;}
-  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-  .sep { height: 1px; background: var(--line); margin: 16px 0; }
-  #game-container { position: relative; width: 100%; height: 480px; background-color: #000; border-radius: 12px; margin-top: 24px; }
+  #game-container { position: relative; width: 100%; height: 480px; background-color: #000; border-radius: 12px; margin-top: 24px; overflow: hidden; }
   #overlay-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+  .uls-dev-btn { background:#1f2633; border:1px solid #2b3344; color:#dfe5f2; border-radius:5px; padding:6px 8px; cursor:pointer; }
+  .uls-dev-btn:hover { background:#242d3e; }
 </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>ULS Dev Pack + Harness</h1>
+    <h1>Urban Life Simulator</h1>
     <div class="card">
-      <div class="row">
-        <span class="badge">Self-contained</span>
-        <span class="badge">No build</span>
-        <span class="badge">Hotpatch-ready</span>
-      </div>
-      <p>Use the floating **Dev Harness** to test features. This page embeds a minimal kernel, various UI modules, and the core game systems.</p>
+      <p>The integrated game client is loading. If you have the `dev=1` flag, the test harness will appear below.</p>
     </div>
     <div id="game-container">
       <div id="overlay-container"></div>
@@ -40,15 +33,15 @@
   </div>
 
   <!-- =========================
-       SYSTEMS & DATA
+       CORE SYSTEMS & LOADER
        ========================= -->
-  <script src="data/asset_manifest.js"></script>
   <script src="systems/asset_manager.js"></script>
   <script src="systems/scene_manager.js"></script>
-  <script src="data/sfx_data.js"></script>
   <script src="systems/audio.js"></script>
-  <script src="data/radio_stations.js"></script>
+  <script src="systems/ads.js"></script>
   <script src="ui/radio.js"></script>
+  <script src="ui/credits.js"></script>
+  <script src="assets-loader.js"></script>
 
   <!-- =========================
        INITIALIZATION
@@ -56,33 +49,24 @@
   <script>
     (function(global) {
       document.addEventListener('DOMContentLoaded', function() {
-        // Init Asset Manager
-        if (global.AssetManager && global.ASSET_MANIFEST) {
-          global.AssetManager.init(global.ASSET_MANIFEST);
-        }
-
-        // Init Scene Manager
-        if (global.SceneManager && global.AssetManager) {
-          global.SceneManager.init({
-            gameContainer: document.getElementById('game-container'),
-            overlayContainer: document.getElementById('overlay-container'),
-            assetManager: global.AssetManager
+        if (global.loadAssets) {
+          global.loadAssets('assets.json').then(function(registry) {
+            if (!registry) {
+              document.body.innerHTML = '<div style="color:red; text-align:center; padding-top:50px;"><h1>Error</h1><p>Failed to load critical game assets. Please check the console.</p></div>';
+              return;
+            }
+            // Initialize UI modules that depend on loaded data
+            if (global.UI && global.UI.Radio) {
+              global.UI.Radio.mount(document.getElementById('radio-container'));
+            }
+            if (global.UI && global.UI.CreditsScreen) {
+              global.UI.CreditsScreen.init(registry.credits);
+            }
+            if (global.AdsManager) {
+              global.AdsManager.init(registry.ads);
+            }
+            console.log('All systems initialized via asset loader.');
           });
-        }
-
-        // Init Radio
-        if (global.UI && global.UI.Radio) {
-          global.UI.Radio.mount(document.getElementById('radio-container'));
-        }
-
-        // Init SFX
-        if (global.GameAudio && global.SFX_PAYLOAD) {
-          console.log('Initializing SFX System...');
-          const payload = global.SFX_PAYLOAD;
-          if (payload.sfx_packs) {
-            payload.sfx_packs.forEach(pack => global.GameAudio.registerPack(pack));
-          }
-          console.log('SFX System Ready. ' + global.GameAudio.sfx.size + ' sounds loaded.');
         }
       });
     })(window);
@@ -97,32 +81,43 @@
     if (!hasDevFlag()) return;
 
     function q(id){ return document.getElementById(id); }
-    function log(msg){ var el=q('uls-dev-log'); if(!el) return; var li=document.createElement('div'); li.textContent=msg; el.appendChild(li); el.scrollTop=el.scrollHeight; }
     function btn(txt, fn){ var b=document.createElement('button'); b.className='uls-dev-btn'; b.textContent=txt; b.onclick=fn; return b; }
 
     var hudHTML = `
-      <div id="uls-dev-hud" style="position:fixed;z-index:999999;right:12px;bottom:12px;width:320px;background:#0d0f12;color:#e6e8ec;font:12px/1.35 system-ui,Arial;border:1px solid #2a2f39;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.35);user-select:none">
-        <div id="uls-dev-head" style="padding:8px 10px;background:#151922;border-bottom:1px solid #242a35;cursor:move;font-weight:600;">ULS Dev</div>
-        <div id="uls-dev-body" style="padding:10px;">
-            <div class="sec" style="margin-bottom:8px;border:1px solid #222835;border-radius:6px;overflow:hidden"><div class="sec-t" style="background:#131825;color:#b9c0cc;padding:6px 8px;font-weight:600">Scene</div><div class="sec-b" id="sec-scene" style="padding:8px;display:flex;flex-wrap:wrap;gap:6px"></div></div>
-            <div class="sec" style="margin-bottom:8px;border:1px solid #222835;border-radius:6px;overflow:hidden"><div class="sec-t" style="background:#131825;color:#b9c0cc;padding:6px 8px;font-weight:600">SFX</div><div class="sec-b" id="sec-sfx" style="padding:8px;display:flex;flex-wrap:wrap;gap:6px"></div></div>
-            <div id="uls-dev-log" style="margin-top:8px;height:120px;overflow:auto;background:#0a0c10;border:1px solid #202634;border-radius:6px;padding:6px;color:#9fb0c9"></div>
+      <div id="uls-dev-hud" style="position:fixed;z-index:999999;right:12px;bottom:12px;width:340px;background:#0d0f12;color:#e6e8ec;font:11px/1.35 system-ui,Arial;border:1px solid #2a2f39;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.35);user-select:none">
+        <div id="uls-dev-head" style="padding:8px 10px;background:#151922;border-bottom:1px solid #242a35;cursor:move;font-weight:600;">ULS Dev Harness</div>
+        <div id="uls-dev-body" style="padding:10px; display:flex; flex-direction:column; gap:8px;">
+            <div class="sec" style="border:1px solid #222835;border-radius:6px;overflow:hidden"><div class="sec-t" style="background:#131825;color:#b9c0cc;padding:6px 8px;font-weight:600">Scene Control</div><div class="sec-b" id="sec-scene" style="padding:8px;display:flex;flex-wrap:wrap;gap:6px"></div></div>
+            <div class="sec" style="border:1px solid #222835;border-radius:6px;overflow:hidden"><div class="sec-t" style="background:#131825;color:#b9c0cc;padding:6px 8px;font-weight:600">Audio (SFX)</div><div class="sec-b" id="sec-sfx" style="padding:8px;display:flex;flex-wrap:wrap;gap:6px"></div></div>
+            <div class="sec" style="border:1px solid #222835;border-radius:6px;overflow:hidden"><div class="sec-t" style="background:#131825;color:#b9c0cc;padding:6px 8px;font-weight:600">Events & Overlays</div><div class="sec-b" id="sec-events" style="padding:8px;display:flex;flex-wrap:wrap;gap:6px"></div></div>
         </div>
       </div>`;
     document.body.insertAdjacentHTML('beforeend', hudHTML);
 
-    var sceneSec = q('sec-scene'), sfxSec = q('sec-sfx');
-    sceneSec.appendChild(btn('City Day', function(){ window.SceneManager.setBackground('backgrounds.city.day.neon_core'); }));
-    sceneSec.appendChild(btn('City Night', function(){ window.SceneManager.setBackground('backgrounds.city.night.neon_heights'); }));
-    sceneSec.appendChild(btn('Apartment', function(){ window.SceneManager.setBackground('locations.apartments.player_default'); }));
-    sceneSec.appendChild(btn('Nightmare', function(){ window.SceneManager.setBackground('locations.dreamworld.nightmare'); }));
-    sceneSec.appendChild(btn('Show HUD', function(){ window.SceneManager.showOverlay('ui.hud.stats_bars', 'hud'); }));
-    sceneSec.appendChild(btn('Hide HUD', function(){ window.SceneManager.hideOverlay('hud'); }));
+    // Wait for systems to be ready
+    setTimeout(function() {
+        var sceneSec = q('sec-scene'), sfxSec = q('sec-sfx'), eventsSec = q('sec-events');
+        if(!sceneSec || !sfxSec || !eventsSec) return;
 
-    sfxSec.appendChild(btn('Click', function(){ window.GameAudio.playSfx('ui_click'); }));
-    sfxSec.appendChild(btn('Success', function(){ window.GameAudio.playSfx('success'); }));
-    sfxSec.appendChild(btn('Ambience ON', function(){ window.GameAudio.playSfx('amb_city_street'); }));
-    sfxSec.appendChild(btn('Ambience OFF', function(){ window.GameAudio.stopSfx('amb_city_street'); }));
+        // Scene Buttons
+        sceneSec.appendChild(btn('City Day', function(){ window.SceneManager.setBackground('backgrounds.city.day.neon_core'); }));
+        sceneSec.appendChild(btn('City Night', function(){ window.SceneManager.setBackground('backgrounds.city.night.neon_heights'); }));
+        sceneSec.appendChild(btn('Apartment', function(){ window.SceneManager.setBackground('backgrounds.apartments.playerDefault'); }));
+        sceneSec.appendChild(btn('Nightmare', function(){ window.SceneManager.setBackground('backgrounds.realms.dreamworld.nightmare'); }));
+
+        // SFX Buttons
+        sfxSec.appendChild(btn('UI Click', function(){ window.GameAudio.playSfx('ui_click'); }));
+        sfxSec.appendChild(btn('Success', function(){ window.GameAudio.playSfx('success'); }));
+        sfxSec.appendChild(btn('Ambience ON', function(){ window.GameAudio.playSfx('amb_city_street', {loop: true}); }));
+        sfxSec.appendChild(btn('Ambience OFF', function(){ window.GameAudio.stopSfx('amb_city_street'); }));
+
+        // Event & Overlay Buttons
+        eventsSec.appendChild(btn('Show HUD', function(){ window.SceneManager.showOverlay('ui.hud.statsBars', 'hud'); }));
+        eventsSec.appendChild(btn('Hide HUD', function(){ window.SceneManager.hideOverlay('hud'); }));
+        eventsSec.appendChild(btn('Show Credits', function(){ window.UI.CreditsScreen.show(); }));
+        eventsSec.appendChild(btn('Radio Ad', function(){ window.AdsManager.triggerRadioAd(); }));
+
+    }, 500); // Delay to ensure managers are initialized
   })();
   </script>
 </body>
