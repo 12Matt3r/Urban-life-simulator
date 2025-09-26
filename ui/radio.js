@@ -167,13 +167,24 @@
 
       function toggleShuffle() {
         if (!state.power) return;
-        const currentTrackUrl = getCurrentTrack() ? getCurrentTrack().url : null;
+        var currentTrackUrl = getCurrentTrack() ? getCurrentTrack().url : null;
         state.shuffle = !state.shuffle;
+
+        var station = STATIONS[state.station] || null;
+        if (station && station._shuffled) {
+            delete station._shuffled;
+        }
 
         updateActivePlaylist();
 
         if (currentTrackUrl) {
-            const newIndex = activePlaylist.findIndex(t => t.url === currentTrackUrl);
+            var newIndex = -1;
+            for(var i = 0; i < activePlaylist.length; i++) {
+                if (activePlaylist[i].url === currentTrackUrl) {
+                    newIndex = i;
+                    break;
+                }
+            }
             state.index = (newIndex !== -1) ? newIndex : 0;
         } else {
             state.index = 0;

@@ -208,8 +208,14 @@
     })();
 
     // --- buttons ----
-    var g=q('sec-global'),lh=q('sec-lh'),dw=q('sec-dw'),bk=q('sec-bk'),ia=q('sec-ia');
-    g.appendChild(btn('Detect',function(){ log('LH: '+!!window.LH); log('UI: '+!!window.UI); log('Hotpatch: '+!!window.Hotpatch); }));
+    var g=q('sec-global'),lh=q('sec-lh'),dw=q('sec-dw'),bk=q('sec-bk'),ia=q('sec-ia'),sfx=document.createElement('div');
+    sfx.className = 'sec';
+    sfx.innerHTML = '<div class="sec-t">SFX</div><div class="sec-b" id="sec-sfx"></div>';
+    q('uls-dev-body').insertBefore(sfx, q('uls-dev-log'));
+
+    var sfxSec = q('sec-sfx');
+
+    g.appendChild(btn('Detect',function(){ log('LH: '+!!window.LH); log('UI: '+!!window.UI); log('Hotpatch: '+!!window.Hotpatch); log('GameAudio: '+!!window.GameAudio); }));
     g.appendChild(btn('Clear',function(){ q('uls-dev-log').innerHTML=''; }));
     lh.appendChild(btn('Open',function(){ window.eventBus.publish('router.go',{to:'living-hell'}); }));
     dw.appendChild(btn('Open',function(){ window.eventBus.publish('router.go',{to:'dreamworld'}); }));
@@ -218,6 +224,12 @@
     ia.appendChild(btn('Fame +5',function(){ window.LH.applyEconomyDelta({fame:5,reason:'harness'}); }));
     ia.appendChild(btn('Credits',function(){ window.UI.Credits.open({player:{name:'Tester'},stats:{earned:123}}); }));
     ia.appendChild(btn('Hotpatch',function(){ window.Hotpatch.apply('test.patch',"window.TEST_OK=true"); }));
+
+    sfxSec.appendChild(btn('Click', function(){ window.GameAudio.playSfx('ui_click'); }));
+    sfxSec.appendChild(btn('Success', function(){ window.GameAudio.playSfx('success'); }));
+    sfxSec.appendChild(btn('Ambience ON', function(){ window.GameAudio.playSfx('amb_city_street'); }));
+    sfxSec.appendChild(btn('Ambience OFF', function(){ window.GameAudio.stopSfx('amb_city_street'); }));
+    sfxSec.appendChild(btn('Stop All', function(){ window.GameAudio.stopAll(); }));
 
     log('Dev HUD ready');
   })();
@@ -232,6 +244,27 @@
     document.addEventListener('DOMContentLoaded', function() {
       if (window.UI && window.UI.Radio) {
         window.UI.Radio.mount(document.getElementById('radio-container'));
+      }
+    });
+  </script>
+
+  <!-- =========================
+       5) SFX System
+       ========================= -->
+  <script src="data/sfx_data.js"></script>
+  <script src="systems/audio.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      if (window.GameAudio && window.SFX_PAYLOAD) {
+        console.log('Initializing SFX System...');
+        const payload = window.SFX_PAYLOAD;
+        if (payload.sfx_packs) {
+          payload.sfx_packs.forEach(pack => window.GameAudio.registerPack(pack));
+        }
+        if (payload.routing) {
+          window.GameAudio.setRouting(payload.routing);
+        }
+        console.log('SFX System Ready. ' + window.GameAudio.sfx.size + ' sounds loaded.');
       }
     });
   </script>
