@@ -278,8 +278,8 @@
 
       updateActivePlaylist();
       updateUI();
-      if (state.power && getCurrentTrack()) {
-        elAudio.src = getCurrentTrack().url;
+      if (state.power) {
+        loadAndPlay(true);
       }
 
       global.ULSRadio = { STATIONS, togglePower, play, pause, next, prev, setStation, setVolume, mute: (on) => { elAudio.muted = !!on; }, toggleShuffle };

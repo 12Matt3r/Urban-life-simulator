@@ -18,9 +18,21 @@
   #overlay-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
   .uls-dev-btn { background:#1f2633; border:1px solid #2b3344; color:#dfe5f2; border-radius:5px; padding:6px 8px; cursor:pointer; }
   .uls-dev-btn:hover { background:#242d3e; }
+  #start-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2em;
+    cursor: pointer;
+    z-index: 10000;
+  }
 </style>
 </head>
 <body>
+  <div id="start-overlay">Click to Start</div>
   <div class="wrap">
     <h1>Urban Life Simulator</h1>
     <div class="card">
@@ -48,7 +60,7 @@
        ========================= -->
   <script>
     (function(global) {
-      document.addEventListener('DOMContentLoaded', function() {
+      function initGame() {
         if (global.loadAssets) {
           global.loadAssets('assets.json').then(function(registry) {
             if (!registry) {
@@ -68,6 +80,14 @@
             console.log('All systems initialized via asset loader.');
           });
         }
+      }
+
+      document.addEventListener('DOMContentLoaded', function() {
+        const overlay = document.getElementById('start-overlay');
+        overlay.addEventListener('click', function() {
+          overlay.style.display = 'none';
+          initGame();
+        }, { once: true });
       });
     })(window);
   </script>
