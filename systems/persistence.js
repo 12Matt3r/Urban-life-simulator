@@ -54,13 +54,7 @@ export class PersistenceSystem {
       }
 
       if (saved){
-        const loadedState = JSON.parse(saved);
-        if (loadedState && loadedState.character && loadedState.history) {
-          this.eventBus.publish('persistence.loaded', loadedState);
-          alert(`Game loaded from slot: ${slotId} (source: ${source})`);
-        } else {
-          alert(`Invalid save data found for slot: ${slotId}`);
-        }
+        alert(`Save found for ${slotId} from ${source}. Reload flow not implemented in this skeleton.`);
       } else {
         alert(`No save data found for slot: ${slotId}`);
       }

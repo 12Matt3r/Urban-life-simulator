@@ -27,18 +27,11 @@ export function mountHUD(container, character, eventBus){
           </div>
         </div>
         <div id="hud-stats" class="hud-stats">
-          ${Object.entries(character.stats).map(([k,v])=>{
-            const STAT_NAMES = {
-              strength: 'Strength', dexterity: 'Dexterity', constitution: 'Constitution',
-              intelligence: 'Intelligence', wisdom: 'Wisdom', charisma: 'Charisma',
-              heat: 'Heat', money: 'Money', health: 'Health', reputation: 'Reputation'
-            };
-            return `
-            <div class="hud-stat" id="hud-stat-${k}" title="${STAT_NAMES[k] || k}">
+          ${Object.entries(character.stats).map(([k,v])=>`
+            <div class="hud-stat" id="hud-stat-${k}">
               <span>${k.slice(0,3).toUpperCase()}</span><br/>
               <strong>${v}</strong>
-            </div>`
-          }).join('')}
+            </div>`).join('')}
         </div>
         <div class="hud-actions">
           <button id="hud-save">Save</button>
@@ -53,9 +46,6 @@ export function mountHUD(container, character, eventBus){
       <div class="hud-row">
         <div class="hud-kv">District: <strong id="hud-district">${character.district || '—'}</strong></div>
         <button id="hud-district-change" title="Change district">Change</button>
-        <div class="hud-kv" style="margin-left: auto;">
-          Time: <strong id="hud-time">Morning</strong> | Weather: <strong id="hud-weather">Clear</strong>
-        </div>
         <small class="muted">Tip: your choices can also trigger moves.</small>
       </div>
 
@@ -109,17 +99,6 @@ export function mountHUD(container, character, eventBus){
 
   eventBus.subscribe('district.changed', (name)=>{
     districtEl.textContent = name || '—';
-  });
-
-  const timeEl = container.querySelector('#hud-time');
-  const weatherEl = container.querySelector('#hud-weather');
-
-  eventBus.subscribe('time.changed', (timeState) => {
-    if(timeEl) timeEl.textContent = `${timeState.timeOfDay} (Day ${timeState.day})`;
-  });
-
-  eventBus.subscribe('weather.changed', (weather) => {
-    if(weatherEl) weatherEl.textContent = weather;
   });
 
   container.querySelector('#hud-save').onclick = () => eventBus.publish('persistence.save','manualSlot1');

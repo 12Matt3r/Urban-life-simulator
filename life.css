@@ -115,10 +115,16 @@ input:focus, select:focus { border-color: var(--accent-cyan); }
 }
 .hud-char-info { font-size: 1.1rem; }
 .hud-stats { display: flex; gap: 14px; }
-.hud-stat { text-align: center; position: relative; }
+.hud-stat { text-align: center; }
 .hud-stat span { font-size: .8rem; color: var(--text-mid); }
 
 /* Docks */
+#radio-dock {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 100;
+}
 #autoplay-dock {
   position: fixed;
   bottom: 10px;
@@ -223,22 +229,14 @@ input:focus, select:focus { border-color: var(--accent-cyan); }
 #top-bar {
   grid-area: top-bar;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
+  gap: 10px;
   background: var(--bg-mid);
-  padding: 10px 20px;
+  padding: 10px;
   border-radius: 8px;
   border: 1px solid var(--accent-purple);
 }
-.game-title {
-  font-size: 1.5em;
-  margin: 0;
-  color: var(--accent-cyan);
-}
-#top-bar-actions {
-  display: flex;
-  gap: 10px;
+#top-bar button {
+  flex: 1;
 }
 
 /* Main Game Layout Override */
