@@ -53,74 +53,26 @@
   },
   "audio": {
     "stations": [
-      {
-        "id": "cozy-fm", "name": "Cozy FM", "shuffle": true, "gain": 0.8,
-        "urls": ["https://file.garden/aNQEj1MKyWDQ8eyI/lofi/Nostalgic%20Currents.mp3", "https://file.garden/aNQEj1MKyWDQ8eyI/lofi/Wavelengths%20of%20Yesterday.mp3", "https://file.garden/aNQEj1MKyWDQ8eyI/lofi/Slow%20Burn%20Waves.mp3"]
-      },
-      {
-        "id": "viva-la-disco", "name": "Viva La Disco", "shuffle": true, "gain": 0.9,
-        "urls": ["https://file.garden/aNQEj1MKyWDQ8eyI/latin/Soltar.mp3", "https://file.garden/aNQEj1MKyWDQ8eyI/latin/El%20Malo%20De%20Tu%20Novela.mp3", "https://file.garden/aNQEj1MKyWDQ8eyI/latin/El%20Mundo%20Est%C3%A1%20Ardiendo.mp3"]
-      },
-      {
-        "id": "bassface-fm", "name": "Bassface FM", "shuffle": true, "gain": 0.95,
-        "urls": ["https://file.garden/aNQEj1MKyWDQ8eyI/dubstep/collard%20greens%20with%20a%20side%20of%20brain%20rott.wav", "https://file.garden/aNQEj1MKyWDQ8eyI/dubstep/muahahahaha%20(%20sofa%20sauce).wav"]
-      },
-      {
-        "id": "hip-hop-on-the-block", "name": "Hip Hop on the Block", "shuffle": true, "gain": 0.9,
-        "urls": ["https://file.garden/aNQEj1MKyWDQ8eyI/hiphop/Noemotion%20funk%202.mp3", "https://file.garden/aNQEj1MKyWDQ8eyI/hiphop/Noemotion%20funk.mp3"]
-      },
-      {
-        "id": "backforty-drip", "name": "BackFORTYdrip", "shuffle": true, "gain": 0.9,
-        "urls": ["https://file.garden/aNQEj1MKyWDQ8eyI/country/Back%20road%20confessions.mp3", "https://file.garden/aNQEj1MKyWDQ8eyI/country/long%20Road%20home.mp3"]
-      },
-      {
-        "id": "mosh-pit-fm", "name": "Mosh Pit FM", "shuffle": true, "gain": 1.0,
-        "urls": ["https://file.garden/aNQEj1MKyWDQ8eyI/metal/Whats%20in%20the%20Bowl%20Bitch.mp3", "https://file.garden/aNQEj1MKyWDQ8eyI/metal/Machine%20Man%20Future%20Dude.mp3"]
-      },
-      {
-        "id": "notebook-fm", "name": "Notebook FM", "shuffle": false, "gain": 1.0,
-        "urls": ["https://file.garden/aNQEj1MKyWDQ8eyI/Talk%20radio/Exit%20valley%20episode.mp3", "https://file.garden/aNQEj1MKyWDQ8eyI/Talk%20radio/Echoes%20of%20the%20golden%20mask.mp3"]
-      }
+      {"id": "cozy-fm", "name": "Cozy FM", "shuffle": true, "urls": ["https://file.garden/aNQEj1MKyWDQ8eyI/lofi/Nostalgic%20Currents.mp3"]},
+      {"id": "viva-la-disco", "name": "Viva La Disco", "shuffle": true, "urls": ["https://file.garden/aNQEj1MKyWDQ8eyI/latin/Soltar.mp3"]},
+      {"id": "bassface-fm", "name": "Bassface FM", "shuffle": true, "urls": ["https://file.garden/aNQEj1MKyWDQ8eyI/dubstep/collard%20greens%20with%20a%20side%20of%20brain%20rott.wav"]},
+      {"id": "hip-hop-on-the-block", "name": "Hip Hop on the Block", "shuffle": true, "urls": ["https://file.garden/aNQEj1MKyWDQ8eyI/hiphop/Noemotion%20funk%202.mp3"]},
+      {"id": "backforty-drip", "name": "BackFORTYdrip", "shuffle": true, "urls": ["https://file.garden/aNQEj1MKyWDQ8eyI/country/Back%20road%20confessions.mp3"]},
+      {"id": "mosh-pit-fm", "name": "Mosh Pit FM", "shuffle": true, "urls": ["https://file.garden/aNQEj1MKyWDQ8eyI/metal/Whats%20in%20the%20Bowl%20Bitch.mp3"]},
+      {"id": "notebook-fm", "name": "Notebook FM", "shuffle": false, "urls": ["https://file.garden/aNQEj1MKyWDQ8eyI/Talk%20radio/Exit%20valley%20episode.mp3"]}
     ],
-    "sfx": {
-      "ui_click": "assets/sfx/ui/ui_click.wav",
-      "ui_confirm": "assets/sfx/ui/ui_confirm.wav",
-      "amb_city_street": "assets/sfx/ambience/city_street.wav",
-      "tension_stab": "assets/sfx/enhancers/tension_stab.mp3",
-      "success": "assets/sfx/enhancers/success.wav"
-    }
+    "sfx_packs": [
+      {"id": "ui_core_v1", "items": [{"id": "ui_click", "path": "https://file.garden/aNQEj1MKyWDQ8eyI/sfx/%F0%9F%8C%86%20Immersion%20Layers/click.wav"}]}
+    ]
   },
   "ads": {
-    "radio": {
-      "enabled": true,
-      "placeholder": "assets/audio/ads/default-radio-ad.mp3",
-      "cooldownSec": 180,
-      "chancePerSong": 0.18
-    },
-    "tv": {
-      "enabled": false,
-      "placeholderImage": "assets/ads/tv-ad-placeholder.png"
-    }
+    "radio": { "enabled": true, "placeholder": "assets/audio/ads/default-radio-ad.mp3" }
   },
   "credits": {
     "title": "Urban Life Simulator",
     "roll": [
-      { "label": "Game Design", "value": "You" },
-      { "label": "Development", "value": "Jules (AI Assistant)" },
-      { "label": "Writing & Narrative", "value": "You" },
-      { "label": "Art", "value": "AI/WebSim Generated" },
-      { "label": "Music", "value": "Original tracks by You" },
-      { "label": "Tools Used", "value": "ChatGPT (OpenAI), Google Jules, WebSim, MiniMax AI, FileGarden" }
-    ],
-    "postCreditsCue": "Welcome to Urban Life Simulator—seize the day."
-  },
-  "routing": {
-    "defaultDistrict": "market",
-    "districts": ["elite", "market", "industrial", "skyline"],
-    "realms": {
-      "dreamworld": { "entry": "sleep", "imagesKey": "backgrounds.realms.dreamworld" },
-      "backrooms": { "entry": "glitch", "imagesKey": "backgrounds.realms.backrooms" },
-      "livingHell": { "entry": "ad_or_npc", "imagesKey": "backgrounds.realms.livingHell" }
-    }
+      { "label": "Game Design", "value": "User" },
+      { "label": "Development", "value": "Jules & Mini Max" }
+    ]
   }
 }

@@ -11,7 +11,7 @@
         { type: 'scene', assetPath: 'backgrounds.city.night.neon_heights', duration: 3000 },
         { type: 'log', message: 'A pull. A tug. A sense of falling...' },
         { type: 'delay', duration: 2000 },
-        { type: 'scene', assetPath: 'locations.apartments.player_default' },
+        { type: 'scene', assetPath: 'backgrounds.apartments.playerDefault' },
         { type: 'log', message: 'You wake up with a gasp. The smell of stale synth-coffee fills your small apartment.' },
         { type: 'log', message: 'A notification buzzes on your phone: "Your first ride-share pickup is in 10 minutes."' },
         { type: 'advance_time', minutes: 1 },
@@ -56,7 +56,6 @@
     executeEvent: function(event) {
       switch (event.type) {
         case 'log':
-          // In a real UI, this would go to a story panel. For now, console is fine.
           console.log('[STORY]', event.message);
           this.eventBus.publish('narrative:log', { message: event.message });
           this.executeNextEvent();

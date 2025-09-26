@@ -36,6 +36,8 @@
       const hudImageUrl = this.assetManager.get('ui.hud.statsBars');
       if (!hudImageUrl) {
         console.error('HUD background asset not found.');
+        this.container.style.border = "1px solid red"; // Fallback visibility
+        this.container.innerHTML = "<p style='color:red'>HUD asset missing</p>";
         return;
       }
 
@@ -55,7 +57,7 @@
       `;
 
       this.container.innerHTML = `
-        <div id="hud-stats-container" style="margin-top: 20px; display: flex; flex-direction: column; gap: 8px;">
+        <div id="hud-stats-container" style="margin-top: 20px; display: flex; flex-direction: column; gap: 8px; padding-left: 15px;">
             <div id="hud-health">Health: --</div>
             <div id="hud-sanity">Sanity: --</div>
             <div id="hud-money">Money: $--</div>

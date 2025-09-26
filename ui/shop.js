@@ -31,9 +31,9 @@
       this.container.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:5000; display:flex; align-items:center; justify-content:center;';
 
       const shopHtml = `
-        <div style="background:var(--panel); padding:20px; border-radius:12px; border:1px solid var(--line); text-align:center;">
+        <div style="background:var(--panel); padding:20px; border-radius:12px; border:1px solid var(--line); text-align:center; color: var(--ink);">
           <h2>Corner Store</h2>
-          <p>A dusty little shop. Smells like synth-jerky.</p>
+          <p style="color: var(--muted);">A dusty little shop. Smells like synth-jerky.</p>
           <button id="buy-water-btn" class="uls-dev-btn">Buy Water ($5)</button>
           <button id="close-shop-btn" class="uls-dev-btn" style="margin-left:10px;">Leave</button>
         </div>
@@ -68,15 +68,10 @@
       if (playerMoney >= itemCost) {
         this.gameManager.modifyStat('money', -itemCost);
         this.gameManager.addItem({ id: 'water_bottle', name: 'Bottled Water' });
-
-        // We'll need to add a 'cash' sound to the manifest later.
-        // For now, we can use an existing sound as a placeholder.
         this.gameAudio.playSfx('ui_confirm');
-        console.log('[Shop] Player bought water.');
         alert('You bought a bottle of water.');
       } else {
         this.gameAudio.playSfx('ui_error');
-        console.log('[Shop] Not enough money to buy water.');
         alert("You don't have enough money.");
       }
     }

@@ -27,13 +27,11 @@
       console.log('Attempting to play radio ad...');
       if (global.GameAudio && this.config.radio.placeholder) {
         const adSfxId = 'ad_radio_placeholder';
-        // We need to register the ad as a sound effect first
         if (!global.GameAudio.sfx.has(adSfxId)) {
             const adAssetPath = this.config.radio.placeholder;
             global.GameAudio.sfx.set(adSfxId, { id: adSfxId, path: adAssetPath, loop: false, gain: 1.0 });
         }
 
-        // A real implementation would duck the radio volume
         console.log('Ducking radio volume for ad...');
         global.GameAudio.playSfx(adSfxId);
       }
@@ -47,7 +45,6 @@
 
       console.log('Attempting to display TV ad...');
       if (global.SceneManager && this.config.tv.placeholderImage) {
-         // A real implementation would show this in a specific UI element
          global.SceneManager.showOverlay(this.config.tv.placeholderImage, 'tv-ad-overlay');
       }
     }
