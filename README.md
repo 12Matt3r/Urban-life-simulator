@@ -1,53 +1,132 @@
-# Urban Life Simulator - Multi-Realm Edition
+Urban Life Simulator
 
-This project is a modular, multi-realm narrative game built for the Chroma Awards. It consists of a central "Urban Life Simulator" hub and several interconnected "realms," each offering a unique gameplay experience.
+An experimental browser-based RPG where players can live any life they imagine. Create your own role, make choices, survive challenges, and see how long you can thrive in the city.
 
-## 🚀 Project Vision
+Built for the Hackathon 2025 — feature-complete and Safari-compatible.
 
-The game is designed as a single-page application that runs entirely in the browser, with no login or downloads required. It's built around a core set of shared systems (the "Kernel") and a "Router" that manages transitions between the different game realms.
+🚀 Features
 
-The project includes the following realms:
-*   **ULS (Urban Life Simulator):** The central hub where the main game loop takes place.
-*   **Living Hell (Fish Tank):** A reality show-themed realm with "Chat Control" mechanics.
-*   **Backrooms:** A surreal, fever-dream-like survival experience.
-*   **Dreamworld:** A realm of symbolic trials that affect the player's stats and abilities.
+Two-Panel RPG Interface
 
-## 🏗️ Architecture
+Left: Story panel with branching narrative.
 
-The project follows a modular architecture to keep the different realms and systems decoupled and maintainable.
+Right: Player dashboard (stats, objectives, wanted level).
 
-*   `/kernel/`: Contains the shared, realm-agnostic systems like the `eventBus`, `router`, `state` manager, and `hotpatch` injector.
-*   `/realms/`: Contains the individual game realms, each with its own UI, systems, and logic.
-    *   `/uls/`
-    *   `/livinghell/`
-    *   `/dreamworld/`
-    *   `/backrooms/`
-*   `/systems/`: Contains other shared systems like the `narrator`, `imagegen`, `music`, and `save` systems.
-*   `/ui/`: Contains shared UI components like the `hud`, `radio`, and `dialogue` systems.
-*   `index.html`: The single entry point for the application, which loads all the necessary scripts and starts the game.
-*   `styles.css`: The main stylesheet for the application.
+Top: Action bar with quick-access controls.
 
-## 🎮 How to Play
+Collapsible sim log.
 
-The project is delivered as a single, self-contained `index.html` file that includes a **Dev Test Harness**. To play and test the game:
+Character Creation
 
-1.  **Open `index.html` in a desktop browser.**
-2.  The game will load, and you will see a floating **Dev Harness** panel in the top-right corner.
-3.  Use the buttons in the harness to test the various game systems:
-    *   **💵 Wallet +$50:** Adds $50 to the player's wallet.
-    *   **⭐ Fame +5:** Increases the player's fame/reputation by 5.
-    *   **🎬 Open Credits:** Displays the credits screen.
-    *   **🧩 Apply Hotpatch:** Applies a test hotpatch to the game at runtime.
-    *   **📜 List Patches:** Shows a list of all applied hotpatches.
-    *   **🧹 Teardown:** Removes the test harness UI.
-4.  Open the browser's **DevTools console** to see detailed logs from the game's event bus and other systems.
+Freeform role input (be anything you want).
 
-## 🔧 Development Notes
+Suggested roles for inspiration.
 
-The project is built to be ES5-compatible to ensure it runs on a wide range of browsers, including older versions of Safari. It does not use any modern JavaScript features like `async/await`, `let`/`const`, or classes.
+Role sanitization (keeps language safe).
 
-The final `index.html` contains all the necessary code to run the game, including the kernel, all the modules, and the test harness. This was done to work around persistent issues with the file system tools in the development environment.
+Dynamic Systems
 
----
+Day/Night Cycle with shop hours and ambience changes.
 
-This README provides a comprehensive overview of the project and how to run and test it. It is the final piece of documentation for the project.
+Weather System with randomized atmospheric effects.
+
+Wanted Stars (0–5) linked to the HEAT stat.
+
+Objectives Panel that evolves with your choices.
+
+Storyline Log always accessible — track what you’ve done.
+
+Adult Content Toggle
+
+At the start, choose between Standard Mode or Adult Mode.
+
+Adult Mode unlocks mature dialogue, stronger language, sexual themes, and darker storylines.
+
+Audio & Radio
+
+12 radio stations: Lo-Fi, Hip-Hop, Reggaeton, Dubstep, House, Metal, Country, Vaporwave/Slushwave, Trippy, Classical, News, Mixes.
+
+Play external links (YouTube, SoundCloud, MP3/OGG/WAV).
+
+Community uploads via Supabase backend.
+
+Persistence
+
+Hybrid save system: Supabase cloud saves + localStorage fallback.
+
+Autosave and multiple save slots.
+
+Extras & Surreal Events
+
+Lottery events.
+
+Dream sequences that include strange, symbolic objects (like a mysterious ball that drifts through your sleep).
+
+Surprising narrative twists for replayability.
+
+🛠️ Tech Stack
+
+Frontend: Vanilla JavaScript (ES5 only), HTML5, CSS3
+
+Backend: Supabase (PostgreSQL + Auth + Storage)
+
+Narrative Engine: WebSim iframe integration with local fallback
+
+Audio: HTML5 <audio> + embedded YouTube/SoundCloud
+
+📦 Setup
+
+Clone the repository:
+
+git clone https://github.com/12Matt3r/Urban-life-simulator.git
+cd Urban-life-simulator
+
+
+Configure environment variables:
+Create env.js with your Supabase project details:
+
+window.SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
+window.SUPABASE_KEY = "YOUR_ANON_KEY";
+
+
+Open index.html in a browser (or serve with a static server).
+
+(Optional) Deploy via Azure Static Web Apps or Vercel.
+
+🎮 How to Play
+
+Start Simulation
+
+Enter your name.
+
+Type in any role you want to play.
+
+Adjust your stats.
+
+Toggle Adult Mode ON/OFF depending on the style of experience you want.
+
+Live Your Life
+
+Follow the narrative prompts.
+
+Every decision advances your story.
+
+Watch your stats, objectives, and wanted level.
+
+Survive & Thrive
+
+Avoid getting caught.
+
+Explore surreal events and dream sequences.
+
+Try to build your legacy.
+
+✅ Hackathon Submission Status
+
+Feature-complete ✅
+
+9 acceptance tests passing ✅
+
+Safari + mobile compatible ✅
+
+Supabase + WebSim fully integrated ✅
