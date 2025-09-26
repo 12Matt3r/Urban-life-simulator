@@ -1,293 +1,198 @@
 (function(global) {
-  function mountRadio(container) {
-    container.innerHTML = `
-      <div id="uls-radio" class="uls-radio">
-        <div class="uls-radio__bezel">
-          <div class="uls-radio__brand">ULS • CAR RADIO</div>
-          <div class="uls-radio__display">
-            <div class="uls-radio__station" id="radio-station">—</div>
-            <div class="uls-radio__title" id="radio-title">Power OFF</div>
-            <div class="uls-radio__time" id="radio-time">00:00 / 00:00</div>
-          </div>
+  'use strict';
 
-          <div class="uls-radio__row">
-            <button id="radio-power" class="btn danger">POWER</button>
-            <div class="btn-group">
-              <button id="radio-prev" class="btn" disabled>⏮</button>
-              <button id="radio-play" class="btn" disabled>▶</button>
-              <button id="radio-pause" class="btn" disabled>⏸</button>
-              <button id="radio-next" class="btn" disabled>⏭</button>
-              <button id="radio-shuffle" class="btn" title="Shuffle" disabled>🔀</button>
-            </div>
-            <label class="vol">
-              VOL <input id="radio-vol" type="range" min="0" max="1" step="0.01" value="0.8">
-            </label>
-          </div>
+  const ULSRadio = {
+    state: {},
+    activePlaylist: [],
+    el: {},
 
-          <div class="uls-radio__row">
-            <div class="btn-group" id="radio-stations"></div>
-          </div>
-        </div>
-
-        <audio id="radio-audio" preload="metadata" crossorigin="anonymous"></audio>
-      </div>
-    `;
-
-    const style = document.createElement('style');
-    style.textContent = `
-      .uls-radio { width:560px; max-width:95vw; margin:10px auto; font-family:sans-serif; }
-      .uls-radio__bezel { background:#1a1d22; border:2px solid #2a2f37; border-radius:14px; padding:14px; color:#dce3ee; }
-      .uls-radio__brand { font-size:12px; letter-spacing:2px; opacity:.7; margin-bottom:8px; }
-      .uls-radio__display { background:#0c1116; border:1px solid #29303a; border-radius:8px; padding:10px 12px; margin-bottom:10px; }
-      .uls-radio__station { font-weight:700; font-size:14px; color:#89d1ff; }
-      .uls-radio__title { font-size:13px; color:#cfe6ff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-      .uls-radio__time { font-size:12px; color:#8aa0b5; margin-top:2px; }
-      .uls-radio__row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; flex-wrap:wrap; }
-      .btn { background:#222833; color:#e8f1ff; border:1px solid #394455; padding:8px 12px; border-radius:8px; cursor:pointer; }
-      .btn:hover:not(:disabled) { background:#2b3341; }
-      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-      .btn.active { background: #1a5b8a; border-color: #2c89d1; box-shadow: 0 0 6px #2c89d1; }
-      .btn.danger { background:#5b1a1a; border-color:#7a2323; }
-      .btn-group { display:flex; gap:8px; flex-wrap:wrap; }
-      .vol { display:flex; align-items:center; gap:8px; }
-      .uls-radio.off { opacity:.55; filter:grayscale(.2); }
-    `;
-    document.head.appendChild(style);
-
-    // --- Core Radio Logic (Rewritten for Robustness + Shuffle) ---
-    (function () {
-      const STATIONS = global.RADIO_STATIONS || {};
-      const firstStationId = Object.keys(STATIONS)[0] || 'none';
-
-      const KEY = 'uls_radio_state';
+    init: function() {
+      const firstStationId = Object.keys(global.RADIO_STATIONS || {})[0] || 'none';
       const defaults = { power: false, station: firstStationId, index: 0, vol: 0.8, t: 0, shuffle: false };
-      let state = Object.assign({}, defaults, JSON.parse(localStorage.getItem(KEY) || '{}'));
+      this.state = Object.assign({}, defaults, JSON.parse(localStorage.getItem('uls_radio_state') || '{}'));
 
-      const $ = id => document.getElementById(id);
-      const elAudio = $('radio-audio'), elPower = $('radio-power'), elPlay = $('radio-play'),
-            elPause = $('radio-pause'), elNext = $('radio-next'), elPrev = $('radio-prev'),
-            elShuffle = $('radio-shuffle'), elVol = $('radio-vol'), elStationName = $('radio-station'),
-            elTitle = $('radio-title'), elTime = $('radio-time'), elStations = $('radio-stations'),
-            root = $('uls-radio');
+      this.el.audio = document.getElementById('radio-audio');
+      this.el.power = document.getElementById('radio-power');
+      this.el.play = document.getElementById('radio-play');
+      this.el.pause = document.getElementById('radio-pause');
+      this.el.next = document.getElementById('radio-next');
+      this.el.prev = document.getElementById('radio-prev');
+      this.el.shuffle = document.getElementById('radio-shuffle');
+      this.el.vol = document.getElementById('radio-vol');
+      this.el.stationName = document.getElementById('radio-station');
+      this.el.title = document.getElementById('radio-title');
+      this.el.time = document.getElementById('radio-time');
+      this.el.stations = document.getElementById('radio-stations');
+      this.el.root = document.getElementById('uls-radio');
 
-      const controls = [elPlay, elPause, elNext, elPrev, elShuffle];
-      let activePlaylist = [];
+      this.bindEvents();
+      this.renderStationButtons();
+      this.updateActivePlaylist();
+      this.updateUI();
 
-      function saveState() {
-        localStorage.setItem(KEY, JSON.stringify(state));
+      if (this.state.power && this.getCurrentTrack()) {
+        this.el.audio.src = this.getCurrentTrack().url;
       }
+      console.log('Radio module initialized.');
+    },
 
-      function shuffleArray(array) {
-        var a = array.slice();
-        for (var i = a.length - 1; i > 0; i--) {
-            var j = Math.floor(Math.random() * (i + 1));
-            var temp = a[i];
-            a[i] = a[j];
-            a[j] = temp;
+    bindEvents: function() {
+      this.el.power.onclick = this.togglePower.bind(this);
+      this.el.play.onclick = this.play.bind(this);
+      this.el.pause.onclick = this.pause.bind(this);
+      this.el.next.onclick = this.next.bind(this, false);
+      this.el.prev.onclick = this.prev.bind(this);
+      this.el.shuffle.onclick = this.toggleShuffle.bind(this);
+      this.el.vol.oninput = (e) => this.setVolume(parseFloat(e.target.value));
+      this.el.audio.addEventListener('ended', () => this.next(false));
+      this.el.audio.addEventListener('timeupdate', this.updateUI.bind(this));
+    },
+
+    saveState: function() {
+      localStorage.setItem('uls_radio_state', JSON.stringify(this.state));
+    },
+
+    updateActivePlaylist: function() {
+      const station = global.RADIO_STATIONS[this.state.station];
+      if (!station || !station.tracks || station.tracks.length === 0) {
+        this.activePlaylist = [];
+        return;
+      }
+      if (this.state.shuffle) {
+        if (!station._shuffled) {
+          station._shuffled = this.shuffleArray(station.tracks);
         }
-        return a;
+        this.activePlaylist = station._shuffled;
+      } else {
+        this.activePlaylist = station.tracks;
       }
+    },
 
-      function updateActivePlaylist() {
-        const station = STATIONS[state.station] || null;
-        if (!station || !station.tracks || station.tracks.length === 0) {
-          activePlaylist = [];
-          return;
-        }
-        if (state.shuffle) {
-          if (!station._shuffled) {
-            station._shuffled = shuffleArray(station.tracks);
-          }
-          activePlaylist = station._shuffled;
-        } else {
-          activePlaylist = station.tracks;
-          if (station._shuffled) {
-            delete station._shuffled;
-          }
-        }
+    getCurrentTrack: function() {
+      if (this.activePlaylist.length === 0) return null;
+      return this.activePlaylist[this.state.index % this.activePlaylist.length];
+    },
+
+    loadAndPlay: function(resumeTime) {
+      const track = this.getCurrentTrack();
+      if (!track) return this.updateUI();
+      this.el.audio.src = track.url;
+      this.el.audio.load();
+      this.el.audio.oncanplaythrough = () => {
+        this.el.audio.currentTime = resumeTime ? this.state.t : 0;
+        this.el.audio.volume = this.state.vol;
+        this.el.audio.play().catch(e => console.error("Radio play failed:", e));
+        this.state.t = 0;
+        this.saveState();
+        this.updateUI();
+      };
+    },
+
+    play: function() { if (this.state.power && this.el.audio.src) this.el.audio.play(); },
+    pause: function() { this.el.audio.pause(); },
+
+    next: function(isError) {
+      if (this.activePlaylist.length === 0) return;
+      this.state.index = (this.state.index + 1) % this.activePlaylist.length;
+      if (!isError) this.state.t = 0;
+      this.saveState();
+      if (this.state.power) this.loadAndPlay(false);
+    },
+
+    prev: function() {
+      if (this.activePlaylist.length === 0) return;
+      this.state.index = (this.state.index - 1 + this.activePlaylist.length) % this.activePlaylist.length;
+      this.state.t = 0;
+      this.saveState();
+      if (this.state.power) this.loadAndPlay(false);
+    },
+
+    togglePower: function() {
+      this.state.power = !this.state.power;
+      if (this.state.power) {
+        this.updateActivePlaylist();
+        this.loadAndPlay(true);
+      } else {
+        this.state.t = this.el.audio.currentTime;
+        this.el.audio.pause();
+        this.el.audio.src = '';
       }
+      this.saveState();
+      this.updateUI();
+    },
 
-      function getCurrentTrack() {
-        if (!activePlaylist || activePlaylist.length === 0) return null;
-        return activePlaylist[state.index % activePlaylist.length] || null;
-      }
+    toggleShuffle: function() {
+        if (!this.state.power) return;
+        const currentTrackUrl = this.getCurrentTrack() ? this.getCurrentTrack().url : null;
+        this.state.shuffle = !this.state.shuffle;
 
-      function guessType(u) {
-        if (!u) return 'audio/mpeg';
-        const ext = (u.split('.').pop() || '').toLowerCase();
-        if (ext === 'wav') return 'audio/wav';
-        return 'audio/mpeg';
-      }
+        const station = global.RADIO_STATIONS[this.state.station];
+        if (station && station._shuffled) delete station._shuffled;
 
-      function loadAndPlay(resumeTime) {
-        const track = getCurrentTrack();
-        if (!track) {
-          updateUI();
-          return;
-        }
-        elAudio.src = track.url;
-        elAudio.load();
-        elAudio.oncanplaythrough = function() {
-            elAudio.currentTime = resumeTime ? state.t : 0;
-            elAudio.volume = state.vol;
-            elAudio.play().catch(e => console.error("Radio play failed:", e));
-            state.t = 0;
-            saveState();
-            updateUI();
-        };
-        elAudio.onerror = function() {
-            console.error("Error loading track:", track.url);
-            next(true);
-        };
-      }
-
-      function play() {
-        if (state.power && elAudio.src) {
-          elAudio.play().catch(e => console.error("Radio play failed:", e));
-        }
-      }
-
-      function pause() { elAudio.pause(); }
-
-      function next(isErrorSkip) {
-        if (activePlaylist.length === 0) return;
-        state.index = (state.index + 1) % activePlaylist.length;
-        if (!isErrorSkip) state.t = 0;
-        saveState();
-        if (state.power) loadAndPlay(false);
-      }
-
-      function prev() {
-        if (activePlaylist.length === 0) return;
-        state.index = (state.index - 1 + activePlaylist.length) % activePlaylist.length;
-        state.t = 0;
-        saveState();
-        if (state.power) loadAndPlay(false);
-      }
-
-      function toggleShuffle() {
-        if (!state.power) return;
-        var currentTrackUrl = getCurrentTrack() ? getCurrentTrack().url : null;
-        state.shuffle = !state.shuffle;
-
-        var station = STATIONS[state.station] || null;
-        if (station && station._shuffled) {
-            delete station._shuffled;
-        }
-
-        updateActivePlaylist();
+        this.updateActivePlaylist();
 
         if (currentTrackUrl) {
-            var newIndex = -1;
-            for(var i = 0; i < activePlaylist.length; i++) {
-                if (activePlaylist[i].url === currentTrackUrl) {
-                    newIndex = i;
-                    break;
-                }
-            }
-            state.index = (newIndex !== -1) ? newIndex : 0;
+            const newIndex = this.activePlaylist.findIndex(t => t.url === currentTrackUrl);
+            this.state.index = newIndex !== -1 ? newIndex : 0;
         } else {
-            state.index = 0;
+            this.state.index = 0;
         }
-        saveState();
-        updateUI();
+        this.saveState();
+        this.updateUI();
+    },
+
+    setStation: function(id) {
+      this.state.station = id;
+      this.state.index = 0;
+      this.state.t = 0;
+      this.updateActivePlaylist();
+      this.saveState();
+      this.updateUI();
+      if (this.state.power) this.loadAndPlay(false);
+    },
+
+    setVolume: function(v) {
+        this.state.vol = v;
+        this.el.audio.volume = v;
+        this.saveState();
+    },
+
+    updateUI: function() {
+      this.el.root.classList.toggle('off', !this.state.power);
+      this.el.vol.value = this.state.vol;
+      [this.el.play, this.el.pause, this.el.next, this.el.prev, this.el.shuffle].forEach(btn => btn.disabled = !this.state.power);
+      this.el.shuffle.classList.toggle('active', this.state.shuffle);
+
+      if (!this.state.power) {
+        this.el.stationName.textContent = '—';
+        this.el.title.textContent = 'Power OFF';
+        this.el.time.textContent = '00:00 / 00:00';
+        return;
       }
+      const station = global.RADIO_STATIONS[this.state.station] || {};
+      const track = this.getCurrentTrack();
+      this.el.stationName.textContent = station.name || 'NO STATION';
+      this.el.title.textContent = track ? track.title : 'No Track';
+      const dur = isFinite(this.el.audio.duration) ? this.el.audio.duration : 0;
+      this.el.time.textContent = this.fmt(this.el.audio.currentTime) + ' / ' + this.fmt(dur);
+    },
 
-      function setStation(id) {
-        if (!STATIONS[id]) return;
-        state.station = id;
-        state.index = 0;
-        state.t = 0;
-        updateActivePlaylist();
-        saveState();
-        updateUI();
-        if (state.power) loadAndPlay(false);
-      }
-
-      function setVolume(v) {
-        state.vol = Math.max(0, Math.min(1, v));
-        elAudio.volume = state.vol;
-        saveState();
-      }
-
-      function togglePower() {
-        state.power = !state.power;
-        if (state.power) {
-          updateActivePlaylist();
-          loadAndPlay(true);
-        } else {
-          state.t = elAudio.currentTime;
-          elAudio.pause();
-          elAudio.src = '';
-        }
-        saveState();
-        updateUI();
-      }
-
-      function fmt(s) {
-        s = Math.floor(s || 0);
-        const m = String(Math.floor(s / 60)).padStart(2, '0');
-        const ss = String(s % 60).padStart(2, '0');
-        return m + ':' + ss;
-      }
-
-      function updateUI() {
-        root.classList.toggle('off', !state.power);
-        elVol.value = String(state.vol);
-        controls.forEach(btn => btn.disabled = !state.power);
-        elShuffle.classList.toggle('active', state.shuffle);
-
-        if (!state.power) {
-          elStationName.textContent = '—';
-          elTitle.textContent = 'Power OFF';
-          elTime.textContent = '00:00 / 00:00';
-          return;
-        }
-
-        const station = STATIONS[state.station] || {};
-        const track = getCurrentTrack();
-        elStationName.textContent = station.name ? station.name.toUpperCase() : 'NO STATION';
-        elTitle.textContent = track ? track.title : 'No track available';
-        const dur = isFinite(elAudio.duration) ? elAudio.duration : 0;
-        elTime.textContent = fmt(elAudio.currentTime) + ' / ' + fmt(dur);
-      }
-
-      // --- Event Listeners ---
-      elPower.onclick = togglePower;
-      elPlay.onclick = play;
-      elPause.onclick = pause;
-      elNext.onclick = () => next(false);
-      elPrev.onclick = prev;
-      elShuffle.onclick = toggleShuffle;
-      elVol.oninput = e => setVolume(parseFloat(e.target.value));
-      elAudio.addEventListener('ended', () => next(false));
-      elAudio.addEventListener('timeupdate', updateUI);
-      elAudio.addEventListener('pause', updateUI);
-      elAudio.addEventListener('play', updateUI);
-
-      // --- Initialization ---
-      elStations.innerHTML = '';
-      Object.keys(STATIONS).forEach(id => {
-        const station = STATIONS[id];
+    renderStationButtons: function() {
+      this.el.stations.innerHTML = '';
+      Object.values(global.RADIO_STATIONS).forEach(station => {
         const b = document.createElement('button');
-        b.className = 'btn';
+        b.className = 'uls-dev-btn';
         b.textContent = station.name;
-        b.onclick = () => setStation(id);
-        elStations.appendChild(b);
+        b.onclick = () => this.setStation(station.id);
+        this.el.stations.appendChild(b);
       });
+    },
 
-      updateActivePlaylist();
-      updateUI();
-      if (state.power && getCurrentTrack()) {
-        elAudio.src = getCurrentTrack().url;
-      }
-
-      global.ULSRadio = { STATIONS, togglePower, play, pause, next, prev, setStation, setVolume, mute: (on) => { elAudio.muted = !!on; }, toggleShuffle };
-      console.log('Radio logic initialized with ' + Object.keys(STATIONS).length + ' stations.');
-    })();
-  }
+    shuffleArray: function(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; },
+    fmt: function(s) { s=Math.floor(s||0); return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0'); }
+  };
 
   global.UI = global.UI || {};
-  global.UI.Radio = { mount: mountRadio };
+  global.UI.Radio = ULSRadio;
 
 })(window);

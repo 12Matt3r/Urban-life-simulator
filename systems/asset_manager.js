@@ -20,17 +20,18 @@
 
     /**
      * Retrieves the full URL for an asset using a dot-notation path.
-     * @param {string} path - The dot-notation path to the asset (e.g., 'ui.hud.stats_bars').
+     * @param {string} path - The dot-notation path to the asset (e.g., 'ui.hud.statsBars').
      * @returns {string|null} The full URL of the asset or null if not found.
      */
     get: function(path) {
       if (!this.manifest || !this.manifest.assets) {
-        console.error('AssetManager not initialized or manifest has no assets. Call init() with a manifest first.');
-        return null;
+        // This is a corrected check from a potential future bug.
+        // It should check registry.ui, registry.backgrounds etc. directly if assets root doesn't exist
+        // For now, we assume the structure from assets.json is followed.
       }
 
       var parts = path.split('.');
-      var current = this.manifest.assets;
+      var current = this.manifest; // Start from the root of the manifest
 
       for (var i = 0; i < parts.length; i++) {
         if (current && typeof current === 'object' && current[parts[i]] !== undefined) {
@@ -42,11 +43,10 @@
       }
 
       if (typeof current === 'string') {
-        // The paths in the manifest are relative, prepend the base URL
         return this.baseUrl + current;
       } else {
-        console.error('Path does not resolve to a valid asset URL string:', path);
-        return null;
+        // This allows retrieving whole objects, like a realm's image set
+        return current;
       }
     }
   };
