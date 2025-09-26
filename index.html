@@ -61,270 +61,164 @@
   </script>
 
   <!-- =========================
-       2) Dev Pack: Economy Bridge
+       2) Dev Pack: Economy Bridge, Credits Screen, Hotpatch Injector
        ========================= -->
   <script>
-    (function (global) {
-      var EB = global.eventBus;
-      var state = { cash: 0, fame: 0, lastReason: '' };
+  (function (global) {
+    var eventBus = global.eventBus;
 
-      function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
-
-      function applyEconomyDelta(delta) {
-        delta = delta || {};
-        if (typeof delta.cash === 'number') {
-          state.cash += delta.cash;
-          EB.publish('econ.wallet.change', { delta: delta.cash, total: state.cash, reason: delta.reason || '' });
-        }
-        if (typeof delta.fame === 'number') {
-          state.fame = clamp(state.fame + delta.fame, -9999, 9999);
-          EB.publish('profile.reputation.change', { delta: delta.fame, total: state.fame, reason: delta.reason || '' });
-        }
-        state.lastReason = delta.reason || '';
-        return { cash: state.cash, fame: state.fame };
+    // --- Economy Bridge ---
+    function applyEconomyDelta(delta) {
+      if (!delta) return;
+      if (typeof delta.cash === 'number' && delta.cash !== 0) {
+        eventBus.publish('econ.wallet.change', { delta: delta.cash, reason: delta.reason || 'LH payout' });
       }
-
-      global.LH = global.LH || {};
-      global.LH.applyEconomyDelta = applyEconomyDelta;
-      global.LH.getEconomySnapshot = function () { return { cash: state.cash, fame: state.fame, reason: state.lastReason }; };
-
-      console.log('[DevPack] Economy Bridge ready');
-    })(window);
-  </script>
-
-  <!-- =========================
-       3) Dev Pack: Credits Screen
-       ========================= -->
-  <script>
-    (function (global) {
-      var EB = global.eventBus;
-      var UI = global.UI = global.UI || {};
-      UI.Credits = UI.Credits || {};
-
-      function ensureLayer() {
-        var el = document.getElementById('credits-layer');
-        if (el) return el;
-
-        el = document.createElement('div');
-        el.id = 'credits-layer';
-        el.innerHTML =
-          '<div class="cx">'+
-            '<div class="panel">'+
-              '<div class="head"><span>Credits</span><button id="cr-close">×</button></div>'+
-              '<div class="body" id="cr-body"></div>'+
-            '</div>'+
-          '</div>';
-        document.body.appendChild(el);
-
-        var css = document.createElement('style');
-        css.textContent = `
-        #credits-layer { position:fixed; inset:0; z-index:9999; display:none; }
-        #credits-layer .cx { position:absolute; inset:0; background:rgba(8,10,12,.7); backdrop-filter: blur(6px);
-          display:flex; align-items:center; justify-content:center; }
-        #credits-layer .panel { width: min(720px, 90vw); background:#0f1115; color:#eaf1ff; border:1px solid #222633; border-radius:14px; box-shadow:0 14px 38px rgba(0,0,0,.5); }
-        #credits-layer .head { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid #202434; font-weight:700; letter-spacing:.02em;}
-        #credits-layer .head button { background:#1b1f2a; color:#b5c2d8; border:1px solid #262b3a; border-radius:8px; padding:6px 10px; cursor:pointer; }
-        #credits-layer .body { max-height: 60vh; overflow:auto; padding:14px; }
-        #credits-layer .k { color:#9fb2d0; }
-        #credits-layer .v { color:#eaf1ff; }
-        #credits-layer .row { margin:6px 0; }
-        #credits-layer .grid { display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px; }
-        #credits-layer .pill { display:inline-block; padding:4px 8px; border-radius:999px; background:#121a14; border:1px solid #143726; color:#73ffcb; margin:4px 6px 0 0; font-size:12px;}
-        `;
-        document.head.appendChild(css);
-
-        document.getElementById('cr-close').onclick = function () { UI.Credits.close(); };
-        return el;
+      if (typeof delta.clout === 'number' && delta.clout > 0 && !delta.cash) {
+        var cashFromClout = Math.max(0, Math.floor(delta.clout / 5));
+        if (cashFromClout) {
+          eventBus.publish('econ.wallet.change', { delta: cashFromClout, reason: 'Clout bonus (LH)' });
+        }
       }
+      if (typeof delta.fame === 'number' && delta.fame !== 0) {
+        eventBus.publish('profile.reputation.change', { delta: delta.fame, source: 'Living Hell' });
+      }
+    }
+    global.LH = global.LH || {};
+    global.LH.applyEconomyDelta = applyEconomyDelta;
 
-      UI.Credits.open = function (data) {
-        data = data || {};
-        var layer = ensureLayer();
-        var b = document.getElementById('cr-body');
-        var tools = (data.tools || []).map(function (t){return '<span class="pill">'+t+'</span>';}).join('');
-        var stats = data.stats || {};
-        var player = data.player || {};
-        b.innerHTML =
-          '<div class="row"><span class="k">Player</span>: <span class="v">'+(player.name || 'Unknown')+'</span></div>'+
-          '<div class="row"><span class="k">Narrator</span>: <span class="v">'+(player.narrator || '—')+'</span></div>'+
-          '<div class="grid">'+
-            '<div class="row"><span class="k">Districts</span>: <span class="v">'+(stats.districts || '—')+'</span></div>'+
-            '<div class="row"><span class="k">Earnings</span>: <span class="v">$'+(stats.earned || 0)+'</span></div>'+
-            '<div class="row"><span class="k">Clout</span>: <span class="v">'+(stats.clout || 0)+'</span></div>'+
-            '<div class="row"><span class="k">Build</span>: <span class="v">'+(data.build || 'MVP')+'</span></div>'+
+    // --- Credits Screen ---
+    function openCredits(opts) {
+      opts = opts || {};
+      var player = opts.player || {};
+      var stats  = opts.stats  || {};
+      var tools  = opts.tools  || ['ChatGPT (GPT-5)','Google Jules','WebSim','MiniMax AI'];
+      var container = document.createElement('div');
+      container.id = 'credits-overlay';
+      container.innerHTML =
+        '<div class="credits-panel">'+
+          '<h2>Credits</h2>'+
+          '<div class="credits-scroll">'+
+            '<p><strong>Project:</strong> Urban Life Simulator — Living Hell — Dreamworld</p>'+
+            '<p><strong>Player:</strong> ' + (player.name || 'Unknown') + '</p>'+
+            '<p><strong>Narrator:</strong> ' + (player.narrator || 'Companion') + '</p>'+
+            '<p><strong>Districts visited:</strong> ' + (stats.districts || '—') + '</p>'+
+            '<p><strong>Money earned:</strong> $' + (stats.earned || 0) + '</p>'+
+            '<p><strong>Clout gained:</strong> ' + (stats.clout || 0) + '</p>'+
+            '<hr/>'+
+            '<p><strong>Tools Used:</strong> ' + tools.join(', ') + '</p>'+
+            '<p><strong>Chroma Awards:</strong> www.ChromaAwards.com</p>'+
           '</div>'+
-          '<div class="row" style="margin-top:8px;"><span class="k">Tools Used</span>:</div>'+
-          '<div>'+tools+'</div>'+
-          '<div class="row" style="margin-top:12px; color:#9fb2d0;">Thanks for playing. Made for Chroma Awards — www.ChromaAwards.com</div>';
-        layer.style.display = 'block';
-      };
+          '<button id="credits-close">Continue</button>'+
+        '</div>';
+      document.body.appendChild(container);
+      document.getElementById('credits-close').onclick = close;
+      function close(){ container.parentNode && container.parentNode.removeChild(container); eventBus.publish('ui.credits.closed', {}); }
+    }
+    global.UI = global.UI || {};
+    global.UI.Credits = { open: openCredits };
 
-      UI.Credits.close = function () {
-        var layer = document.getElementById('credits-layer');
-        if (layer) layer.style.display = 'none';
-        EB.publish('ui.credits.closed', {});
-      };
+    // --- Hotpatch Injector ---
+    var patches = {};
+    function applyHotpatch(name, code, opts){
+      opts = opts || {};
+      var cleaned = String(code || '');
+      patches[name] = { when: Date.now(), ns: opts.namespace || null, size: cleaned.length };
+      try { (new Function(cleaned))(); } catch(e) { console.error(e); }
+      eventBus.publish('hotpatch.applied', { name: name, ns: opts.namespace, size: cleaned.length });
+    }
+    global.Hotpatch = { apply: applyHotpatch, list: function(){ return patches; } };
 
-      console.log('[DevPack] Credits UI ready');
-    })(window);
+  })(window);
   </script>
+  <style>
+  #credits-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+  .credits-panel { width: min(720px, 92vw); max-height: 80vh; background:#111; color:#eee; border:1px solid #333; border-radius:12px; padding:24px; }
+  .credits-scroll { overflow:auto; max-height:56vh; padding-right:8px; }
+  #credits-close { margin-top:16px; padding:10px 16px; background:#00ffa2; color:#111; border:none; border-radius:8px; cursor:pointer; font-weight:700; }
+  </style>
 
   <!-- =========================
-       4) Dev Pack: Hotpatch Injector
+       3) Dev Test Harness (gated)
        ========================= -->
   <script>
-    (function (global) {
-      var EB = global.eventBus;
-      var registry = [];
+  (function () {
+    function hasDevFlag() {
+      try {
+        if (window.__DEV__ === true) return true;
+        return new URLSearchParams(location.search).get('dev') === '1';
+      } catch (e) { return false; }
+    }
+    if (!hasDevFlag()) return;
+    if (window.__ULS_DEV_HUD__) return;
+    window.__ULS_DEV_HUD__ = true;
 
-      function apply(name, code, opts) {
-        name = String(name || 'patch.unnamed');
-        opts = opts || {};
-        var size = (code && code.length) || 0;
-        try {
-          (new Function(code))();
-          registry.push({ name: name, ns: (opts.namespace || ''), size: size, ts: Date.now() });
-          EB.publish('hotpatch.applied', { name: name, ns: opts.namespace || '', size: size });
-          return true;
-        } catch (e) {
-          console.error('[Hotpatch] Error applying', name, e);
-          EB.publish('hotpatch.error', { name: name, error: String(e) });
-          return false;
-        }
-      }
-      function list() { return registry.slice(); }
+    function q(id){ return document.getElementById(id); }
+    function log(msg){ var el=q('uls-dev-log'); if(!el) return; var li=document.createElement('div'); li.textContent=msg; el.appendChild(li); el.scrollTop=el.scrollHeight; }
+    function btn(txt, fn){
+      var b=document.createElement('button'); b.className='uls-dev-btn'; b.textContent=txt;
+      b.onclick=function(){ try{ fn(); }catch(e){ console.error(e); log('ERR: '+e.message); } };
+      return b;
+    }
 
-      global.Hotpatch = { apply: apply, list: list };
-      console.log('[DevPack] Hotpatch Injector ready');
-    })(window);
-  </script>
+    var wrap=document.createElement('div');
+    wrap.id='uls-dev-hud';
+    wrap.innerHTML =
+      '<div id="uls-dev-head">ULS Dev • <span id="uls-dev-fold">▾</span></div>'+
+      '<div id="uls-dev-body">'+
+        '<div class="sec"><div class="sec-b" id="sec-global"></div></div>'+
+        '<div class="sec"><div class="sec-t">LH</div><div class="sec-b" id="sec-lh"></div></div>'+
+        '<div class="sec"><div class="sec-t">DW</div><div class="sec-b" id="sec-dw"></div></div>'+
+        '<div class="sec"><div class="sec-t">BK</div><div class="sec-b" id="sec-bk"></div></div>'+
+        '<div class="sec"><div class="sec-t">IAE</div><div class="sec-b" id="sec-ia"></div></div>'+
+        '<div id="uls-dev-log"></div>'+
+      '</div>';
 
-  <!-- =========================
-       5) Dev Test Harness (floating panel)
-       ========================= -->
-  <script>
-    (function (global) {
-      if (!global.eventBus) {
-        var subs = {};
-        global.eventBus = {
-          subscribe: function (t, f) { (subs[t] = subs[t] || []).push(f); },
-          publish: function (t, d) { (subs[t] || []).forEach(function (f){ try{ f(d);}catch(e){console.error(e);} }); }
-        };
-        console.warn('[Harness] eventBus shim enabled.');
-      }
-      var EB = global.eventBus;
+    var css=document.createElement('style');
+    css.textContent =
+      '#uls-dev-hud{position:fixed;z-index:999999;right:12px;bottom:12px;width:320px;background:#0d0f12;color:#e6e8ec;font:12px/1.35 system-ui,Arial;border:1px solid #2a2f39;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.35);user-select:none}'+
+      '#uls-dev-head{padding:8px 10px;background:#151922;border-bottom:1px solid #242a35;cursor:move;font-weight:600;display:flex;align-items:center;justify-content:space-between}'+
+      '#uls-dev-body{padding:10px}'+
+      '.sec{margin-bottom:8px;border:1px solid #222835;border-radius:6px;overflow:hidden}'+
+      '.sec-t{background:#131825;color:#b9c0cc;padding:6px 8px;font-weight:600}'+
+      '.sec-b{padding:8px;display:flex;flex-wrap:wrap;gap:6px}'+
+      '.uls-dev-btn{background:#1f2633;border:1px solid #2b3344;color:#dfe5f2;border-radius:5px;padding:6px 8px;cursor:pointer}'+
+      '.uls-dev-btn:hover{background:#242d3e}'+
+      '#uls-dev-log{margin-top:8px;height:120px;overflow:auto;background:#0a0c10;border:1px solid #202634;border-radius:6px;padding:6px;color:#9fb0c9}'+
+      '.mini #uls-dev-body{display:none} #uls-dev-head #uls-dev-fold{cursor:pointer}'+
+      '#uls-dev-watermark{position:fixed;top:8px;left:8px;z-index:999998;background:rgba(255,40,40,.10);border:1px solid rgba(255,60,60,.35);color:#ff6b6b;font:600 11px/1 system-ui,Arial;padding:4px 6px;border-radius:6px;backdrop-filter:blur(2px);pointer-events:none;letter-spacing:.6px;text-transform:uppercase}'+
+      '#uls-dev-watermark::after{content:"DEV";} .uls-dev-hidden{display:none !important;}';
+    document.head.appendChild(css);
+    document.body.appendChild(wrap);
 
-      var wrap = document.createElement('div');
-      wrap.id = 'dev-harness';
-      wrap.innerHTML =
-        '<div class="hdr">Dev Harness<div class="spacer"></div><button id="dh-close">×</button></div>'+
-        '<div class="btns">'+
-          '<button id="t1">💵 Wallet +$50</button>'+
-          '<button id="t2">⭐ Fame +5</button>'+
-          '<button id="t3">🎬 Open Credits</button>'+
-          '<button id="t4">🧩 Apply Hotpatch</button>'+
-          '<button id="t5">📜 List Patches</button>'+
-          '<button id="t6">🧹 Teardown</button>'+
-        '</div>'+
-        '<div class="log" id="dh-log"></div>';
-      document.body.appendChild(wrap);
+    var mark=document.createElement('div'); mark.id='uls-dev-watermark'; document.body.appendChild(mark);
 
-      var css = document.createElement('style');
-      css.textContent = `
-      #dev-harness { position:fixed; top:12px; right:12px; z-index:10000; width:320px;
-        font: 13px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial; color:#eee; background:#111; border:1px solid #333; border-radius:10px; box-shadow:0 10px 28px rgba(0,0,0,.45); }
-      #dev-harness .hdr { display:flex; align-items:center; gap:8px; padding:10px 12px; background:#181818; border-bottom:1px solid #2a2a2a; font-weight:700; letter-spacing:.03em; }
-      #dev-harness .hdr .spacer { flex:1; }
-      #dev-harness .hdr button { background:#222; color:#bbb; border:1px solid #333; border-radius:6px; padding:2px 8px; cursor:pointer; }
-      #dev-harness .btns { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:10px 12px; }
-      #dev-harness .btns button { background:#1e1e1e; color:#eee; border:1px solid #2f2f2f; border-radius:8px; padding:8px; cursor:pointer; }
-      #dev-harness .btns button:hover { background:#262626; }
-      #dev-harness .log { max-height:220px; overflow:auto; border-top:1px solid #2a2a2a; padding:8px 12px; background:#0e0e0e; }
-      #dev-harness .log .row { margin:4px 0; white-space:pre-wrap; word-break:break-word; }
-      #dev-harness .log .evt { color:#00ffa2; }
-      #dev-harness .log .err { color:#ff6b6b; }
-      `;
-      document.head.appendChild(css);
+    // --- drag, fold, toggle logic ---
+    (function(){
+      var head=q('uls-dev-head'), hud=q('uls-dev-hud'), wm=q('uls-dev-watermark');
+      var px=0, py=0, ox=0, oy=0;
+      head.onmousedown=function(e){ ox=e.clientX; oy=e.clientY; document.onmousemove=mm; document.onmouseup=mu; };
+      function mm(e){ px=hud.offsetLeft+(e.clientX-ox); py=hud.offsetTop+(e.clientY-oy); ox=e.clientX; oy=e.clientY; hud.style.left='auto'; hud.style.right='auto'; hud.style.top=Math.max(8,Math.min(window.innerHeight-60,py))+'px'; hud.style.left=Math.max(8,Math.min(window.innerWidth-60,px))+'px'; }
+      function mu(){ document.onmousemove=null; document.onmouseup=null; }
+      q('uls-dev-fold').onclick=function(){ hud.classList.toggle('mini'); this.textContent=hud.classList.contains('mini')?'▸':'▾'; };
+      function setHidden(h){ hud.classList.toggle('uls-dev-hidden',h); wm.classList.toggle('uls-dev-hidden',h); try{sessionStorage.setItem('uls.dev.hud.hidden',h?'1':'0');}catch(e){} log('HUD '+(h?'hidden':'shown')); }
+      document.addEventListener('keydown',function(e){ if(e.ctrlKey&&e.shiftKey&&(e.key==='D'||e.key==='d')){setHidden(!hud.classList.contains('uls-dev-hidden'));e.preventDefault();} });
+      try{if(sessionStorage.getItem('uls.dev.hud.hidden')==='1')setHidden(true);}catch(e){}
+    })();
 
-      var logEl = document.getElementById('dh-log');
-      function log(msg, cls) {
-        var r = document.createElement('div');
-        r.className = 'row ' + (cls || '');
-        r.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
-        logEl.appendChild(r);
-        logEl.scrollTop = logEl.scrollHeight;
-      }
+    // --- buttons ----
+    var g=q('sec-global'),lh=q('sec-lh'),dw=q('sec-dw'),bk=q('sec-bk'),ia=q('sec-ia');
+    g.appendChild(btn('Detect',function(){ log('LH: '+!!window.LH); log('UI: '+!!window.UI); log('Hotpatch: '+!!window.Hotpatch); }));
+    g.appendChild(btn('Clear',function(){ q('uls-dev-log').innerHTML=''; }));
+    lh.appendChild(btn('Open',function(){ window.eventBus.publish('router.go',{to:'living-hell'}); }));
+    dw.appendChild(btn('Open',function(){ window.eventBus.publish('router.go',{to:'dreamworld'}); }));
+    bk.appendChild(btn('Open',function(){ window.eventBus.publish('router.go',{to:'backrooms'}); }));
+    ia.appendChild(btn('Wallet +$50',function(){ window.LH.applyEconomyDelta({cash:50,reason:'harness'}); }));
+    ia.appendChild(btn('Fame +5',function(){ window.LH.applyEconomyDelta({fame:5,reason:'harness'}); }));
+    ia.appendChild(btn('Credits',function(){ window.UI.Credits.open({player:{name:'Tester'},stats:{earned:123}}); }));
+    ia.appendChild(btn('Hotpatch',function(){ window.Hotpatch.apply('test.patch',"window.TEST_OK=true"); }));
 
-      EB.subscribe('econ.wallet.change', function (e) { log('econ.wallet.change → $' + (e && e.delta) + ' (total='+(e && e.total)+')', 'evt'); });
-      EB.subscribe('profile.reputation.change', function (e) { log('profile.reputation.change → ' + (e && e.delta) + ' (total='+(e && e.total)+')', 'evt'); });
-      EB.subscribe('hotpatch.applied', function (e) { log('hotpatch.applied → ' + e.name + ' ['+(e.ns||'no ns')+'] size=' + e.size, 'evt'); });
-      EB.subscribe('ui.credits.closed', function () { log('ui.credits.closed', 'evt'); });
-
-      function need(fn, name) { if (!fn) { log('Missing dependency: ' + name, 'err'); return false; } return true; }
-
-      document.getElementById('t1').onclick = function () {
-        if (!need(window.LH && window.LH.applyEconomyDelta, 'LH.applyEconomyDelta')) return;
-        window.LH.applyEconomyDelta({ cash: 50, reason: 'Harness test' });
-        log('Applied economy delta: +$50');
-      };
-
-      document.getElementById('t2').onclick = function () {
-        if (!need(window.LH && window.LH.applyEconomyDelta, 'LH.applyEconomyDelta')) return;
-        window.LH.applyEconomyDelta({ fame: 5, reason: 'Harness test (fame)' });
-        log('Applied fame delta: +5');
-      };
-
-      document.getElementById('t3').onclick = function () {
-        if (!need(window.UI && window.UI.Credits && window.UI.Credits.open, 'UI.Credits.open')) return;
-        window.UI.Credits.open({
-          player: { name: 'Tester', narrator: 'Companion' },
-          stats: { districts: 'Greyline, Neon Mile', earned: 200, clout: 30 },
-          tools: ['ChatGPT (GPT-5)', 'Google Jules', 'WebSim', 'MiniMax AI'],
-          build: 'Dev Harness'
-        });
-        log('Opened credits screen.');
-      };
-
-      document.getElementById('t4').onclick = function () {
-        if (!need(window.Hotpatch && window.Hotpatch.apply, 'Hotpatch.apply')) return;
-        var code =
-          "window.DemoNS = { greet: function(){ console.log('[DemoNS] hello from patch'); return 'hello'; } };"+
-          "if (window.eventBus) window.eventBus.publish('simlog.push', { topic:'PATCH', message:'DemoNS loaded' });";
-        window.Hotpatch.apply('demo.greet', code, { namespace: 'DemoNS' });
-        log('Applied hotpatch: demo.greet (namespace DemoNS)');
-        try { var out = window.DemoNS && window.DemoNS.greet && window.DemoNS.greet(); log('DemoNS.greet() → ' + out); } catch(e){ log('DemoNS.greet() error: ' + e, 'err'); }
-      };
-
-      document.getElementById('t5').onclick = function () {
-        if (!need(window.Hotpatch && window.Hotpatch.list, 'Hotpatch.list')) return;
-        var list = window.Hotpatch.list();
-        log('Patches: ' + JSON.stringify(list, null, 2));
-      };
-
-      document.getElementById('t6').onclick = function () {
-        wrap.parentNode && wrap.parentNode.removeChild(wrap);
-        log('Harness UI removed.');
-      };
-
-      document.getElementById('dh-close').onclick = function () {
-        wrap.parentNode && wrap.parentNode.removeChild(wrap);
-      };
-
-      // Smoke test on load
-      setTimeout(function () {
-        try {
-          if (window.LH && window.LH.applyEconomyDelta) {
-            window.LH.applyEconomyDelta({ cash: 5, reason: 'smoke' });
-            log('Smoke: wallet +$5');
-          }
-          if (window.Hotpatch && window.Hotpatch.apply) {
-            window.Hotpatch.apply('smoke.patch', "window.__SMOKE_OK__=true;", {});
-            log('Smoke: hotpatch applied (smoke.patch)');
-          }
-        } catch (e) { log('Smoke error: ' + e, 'err'); }
-      }, 300);
-
-    })(window);
+    log('Dev HUD ready');
+  })();
   </script>
 </body>
 </html>
