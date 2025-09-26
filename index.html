@@ -6,13 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
   :root {
-    --bg: #0b0b0d;
-    --panel: #111216;
-    --ink: #e9f1ff;
-    --muted: #98a2b3;
-    --acc: #00ffa2;
-    --danger: #ff6b6b;
-    --line: #1c1f26;
+    --bg: #0b0b0d; --panel: #111216; --ink: #e9f1ff; --muted: #98a2b3;
+    --acc: #00ffa2; --danger: #ff6b6b; --line: #1c1f26;
   }
   html, body { height: 100%; background: var(--bg); color: var(--ink); margin: 0; font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
   .wrap { padding: 24px; max-width: 980px; margin: 0 auto; }
@@ -23,6 +18,8 @@
   .badge { display: inline-block; background: #121a14; border: 1px solid #143726; color: #73ffcb; padding: 2px 8px; border-radius: 999px; font-size: 12px; margin-right: 6px;}
   .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
   .sep { height: 1px; background: var(--line); margin: 16px 0; }
+  #game-container { position: relative; width: 100%; height: 480px; background-color: #000; border-radius: 12px; margin-top: 24px; }
+  #overlay-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -34,239 +31,99 @@
         <span class="badge">No build</span>
         <span class="badge">Hotpatch-ready</span>
       </div>
-      <p>Use the floating **Dev Harness** (top-right) to run one-click tests: Wallet +$50, Fame +5, open Credits overlay, apply/list hotpatches, and teardown. This page embeds a minimal kernel (event bus), the Economy Bridge, Credits UI, and a Hotpatch injector.</p>
-      <div class="sep"></div>
-      <p class="hint">Tip: Open DevTools console to see extra logs from patches and events.</p>
+      <p>Use the floating **Dev Harness** to test features. This page embeds a minimal kernel, various UI modules, and the core game systems.</p>
     </div>
-
+    <div id="game-container">
+      <div id="overlay-container"></div>
+    </div>
     <div id="radio-container" style="margin-top: 24px;"></div>
   </div>
 
   <!-- =========================
-       1) Minimal Kernel (Event Bus)
+       SYSTEMS & DATA
+       ========================= -->
+  <script src="data/asset_manifest.js"></script>
+  <script src="systems/asset_manager.js"></script>
+  <script src="systems/scene_manager.js"></script>
+  <script src="data/sfx_data.js"></script>
+  <script src="systems/audio.js"></script>
+  <script src="data/radio_stations.js"></script>
+  <script src="ui/radio.js"></script>
+
+  <!-- =========================
+       INITIALIZATION
        ========================= -->
   <script>
-    (function (global) {
-      var subs = {};
-      global.eventBus = {
-        subscribe: function (topic, fn) {
-          (subs[topic] = subs[topic] || []).push(fn);
-        },
-        publish: function (topic, data) {
-          (subs[topic] || []).forEach(function (fn) {
-            try { fn(data); } catch (e) { console.error('[eventBus handler error]', e); }
+    (function(global) {
+      document.addEventListener('DOMContentLoaded', function() {
+        // Init Asset Manager
+        if (global.AssetManager && global.ASSET_MANIFEST) {
+          global.AssetManager.init(global.ASSET_MANIFEST);
+        }
+
+        // Init Scene Manager
+        if (global.SceneManager && global.AssetManager) {
+          global.SceneManager.init({
+            gameContainer: document.getElementById('game-container'),
+            overlayContainer: document.getElementById('overlay-container'),
+            assetManager: global.AssetManager
           });
         }
-      };
-      console.log('[Kernel] eventBus ready');
+
+        // Init Radio
+        if (global.UI && global.UI.Radio) {
+          global.UI.Radio.mount(document.getElementById('radio-container'));
+        }
+
+        // Init SFX
+        if (global.GameAudio && global.SFX_PAYLOAD) {
+          console.log('Initializing SFX System...');
+          const payload = global.SFX_PAYLOAD;
+          if (payload.sfx_packs) {
+            payload.sfx_packs.forEach(pack => global.GameAudio.registerPack(pack));
+          }
+          console.log('SFX System Ready. ' + global.GameAudio.sfx.size + ' sounds loaded.');
+        }
+      });
     })(window);
   </script>
 
   <!-- =========================
-       2) Dev Pack: Economy Bridge, Credits Screen, Hotpatch Injector
-       ========================= -->
-  <script>
-  (function (global) {
-    var eventBus = global.eventBus;
-
-    // --- Economy Bridge ---
-    function applyEconomyDelta(delta) {
-      if (!delta) return;
-      if (typeof delta.cash === 'number' && delta.cash !== 0) {
-        eventBus.publish('econ.wallet.change', { delta: delta.cash, reason: delta.reason || 'LH payout' });
-      }
-      if (typeof delta.clout === 'number' && delta.clout > 0 && !delta.cash) {
-        var cashFromClout = Math.max(0, Math.floor(delta.clout / 5));
-        if (cashFromClout) {
-          eventBus.publish('econ.wallet.change', { delta: cashFromClout, reason: 'Clout bonus (LH)' });
-        }
-      }
-      if (typeof delta.fame === 'number' && delta.fame !== 0) {
-        eventBus.publish('profile.reputation.change', { delta: delta.fame, source: 'Living Hell' });
-      }
-    }
-    global.LH = global.LH || {};
-    global.LH.applyEconomyDelta = applyEconomyDelta;
-
-    // --- Credits Screen ---
-    function openCredits(opts) {
-      opts = opts || {};
-      var player = opts.player || {};
-      var stats  = opts.stats  || {};
-      var tools  = opts.tools  || ['ChatGPT (GPT-5)','Google Jules','WebSim','MiniMax AI'];
-      var container = document.createElement('div');
-      container.id = 'credits-overlay';
-      container.innerHTML =
-        '<div class="credits-panel">'+
-          '<h2>Credits</h2>'+
-          '<div class="credits-scroll">'+
-            '<p><strong>Project:</strong> Urban Life Simulator — Living Hell — Dreamworld</p>'+
-            '<p><strong>Player:</strong> ' + (player.name || 'Unknown') + '</p>'+
-            '<p><strong>Narrator:</strong> ' + (player.narrator || 'Companion') + '</p>'+
-            '<p><strong>Districts visited:</strong> ' + (stats.districts || '—') + '</p>'+
-            '<p><strong>Money earned:</strong> $' + (stats.earned || 0) + '</p>'+
-            '<p><strong>Clout gained:</strong> ' + (stats.clout || 0) + '</p>'+
-            '<hr/>'+
-            '<p><strong>Tools Used:</strong> ' + tools.join(', ') + '</p>'+
-            '<p><strong>Chroma Awards:</strong> www.ChromaAwards.com</p>'+
-          '</div>'+
-          '<button id="credits-close">Continue</button>'+
-        '</div>';
-      document.body.appendChild(container);
-      document.getElementById('credits-close').onclick = close;
-      function close(){ container.parentNode && container.parentNode.removeChild(container); eventBus.publish('ui.credits.closed', {}); }
-    }
-    global.UI = global.UI || {};
-    global.UI.Credits = { open: openCredits };
-
-    // --- Hotpatch Injector ---
-    var patches = {};
-    function applyHotpatch(name, code, opts){
-      opts = opts || {};
-      var cleaned = String(code || '');
-      patches[name] = { when: Date.now(), ns: opts.namespace || null, size: cleaned.length };
-      try { (new Function(cleaned))(); } catch(e) { console.error(e); }
-      eventBus.publish('hotpatch.applied', { name: name, ns: opts.namespace, size: cleaned.length });
-    }
-    global.Hotpatch = { apply: applyHotpatch, list: function(){ return patches; } };
-
-  })(window);
-  </script>
-  <style>
-  #credits-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 9999; }
-  .credits-panel { width: min(720px, 92vw); max-height: 80vh; background:#111; color:#eee; border:1px solid #333; border-radius:12px; padding:24px; }
-  .credits-scroll { overflow:auto; max-height:56vh; padding-right:8px; }
-  #credits-close { margin-top:16px; padding:10px 16px; background:#00ffa2; color:#111; border:none; border-radius:8px; cursor:pointer; font-weight:700; }
-  </style>
-
-  <!-- =========================
-       3) Dev Test Harness (gated)
+       DEV TEST HARNESS
        ========================= -->
   <script>
   (function () {
-    function hasDevFlag() {
-      try {
-        if (window.__DEV__ === true) return true;
-        return new URLSearchParams(location.search).get('dev') === '1';
-      } catch (e) { return false; }
-    }
+    function hasDevFlag(){ try { return new URLSearchParams(location.search).get('dev') === '1'; } catch (e) { return false; } }
     if (!hasDevFlag()) return;
-    if (window.__ULS_DEV_HUD__) return;
-    window.__ULS_DEV_HUD__ = true;
 
     function q(id){ return document.getElementById(id); }
     function log(msg){ var el=q('uls-dev-log'); if(!el) return; var li=document.createElement('div'); li.textContent=msg; el.appendChild(li); el.scrollTop=el.scrollHeight; }
-    function btn(txt, fn){
-      var b=document.createElement('button'); b.className='uls-dev-btn'; b.textContent=txt;
-      b.onclick=function(){ try{ fn(); }catch(e){ console.error(e); log('ERR: '+e.message); } };
-      return b;
-    }
+    function btn(txt, fn){ var b=document.createElement('button'); b.className='uls-dev-btn'; b.textContent=txt; b.onclick=fn; return b; }
 
-    var wrap=document.createElement('div');
-    wrap.id='uls-dev-hud';
-    wrap.innerHTML =
-      '<div id="uls-dev-head">ULS Dev • <span id="uls-dev-fold">▾</span></div>'+
-      '<div id="uls-dev-body">'+
-        '<div class="sec"><div class="sec-b" id="sec-global"></div></div>'+
-        '<div class="sec"><div class="sec-t">LH</div><div class="sec-b" id="sec-lh"></div></div>'+
-        '<div class="sec"><div class="sec-t">DW</div><div class="sec-b" id="sec-dw"></div></div>'+
-        '<div class="sec"><div class="sec-t">BK</div><div class="sec-b" id="sec-bk"></div></div>'+
-        '<div class="sec"><div class="sec-t">IAE</div><div class="sec-b" id="sec-ia"></div></div>'+
-        '<div id="uls-dev-log"></div>'+
-      '</div>';
+    var hudHTML = `
+      <div id="uls-dev-hud" style="position:fixed;z-index:999999;right:12px;bottom:12px;width:320px;background:#0d0f12;color:#e6e8ec;font:12px/1.35 system-ui,Arial;border:1px solid #2a2f39;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.35);user-select:none">
+        <div id="uls-dev-head" style="padding:8px 10px;background:#151922;border-bottom:1px solid #242a35;cursor:move;font-weight:600;">ULS Dev</div>
+        <div id="uls-dev-body" style="padding:10px;">
+            <div class="sec" style="margin-bottom:8px;border:1px solid #222835;border-radius:6px;overflow:hidden"><div class="sec-t" style="background:#131825;color:#b9c0cc;padding:6px 8px;font-weight:600">Scene</div><div class="sec-b" id="sec-scene" style="padding:8px;display:flex;flex-wrap:wrap;gap:6px"></div></div>
+            <div class="sec" style="margin-bottom:8px;border:1px solid #222835;border-radius:6px;overflow:hidden"><div class="sec-t" style="background:#131825;color:#b9c0cc;padding:6px 8px;font-weight:600">SFX</div><div class="sec-b" id="sec-sfx" style="padding:8px;display:flex;flex-wrap:wrap;gap:6px"></div></div>
+            <div id="uls-dev-log" style="margin-top:8px;height:120px;overflow:auto;background:#0a0c10;border:1px solid #202634;border-radius:6px;padding:6px;color:#9fb0c9"></div>
+        </div>
+      </div>`;
+    document.body.insertAdjacentHTML('beforeend', hudHTML);
 
-    var css=document.createElement('style');
-    css.textContent =
-      '#uls-dev-hud{position:fixed;z-index:999999;right:12px;bottom:12px;width:320px;background:#0d0f12;color:#e6e8ec;font:12px/1.35 system-ui,Arial;border:1px solid #2a2f39;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.35);user-select:none}'+
-      '#uls-dev-head{padding:8px 10px;background:#151922;border-bottom:1px solid #242a35;cursor:move;font-weight:600;display:flex;align-items:center;justify-content:space-between}'+
-      '#uls-dev-body{padding:10px}'+
-      '.sec{margin-bottom:8px;border:1px solid #222835;border-radius:6px;overflow:hidden}'+
-      '.sec-t{background:#131825;color:#b9c0cc;padding:6px 8px;font-weight:600}'+
-      '.sec-b{padding:8px;display:flex;flex-wrap:wrap;gap:6px}'+
-      '.uls-dev-btn{background:#1f2633;border:1px solid #2b3344;color:#dfe5f2;border-radius:5px;padding:6px 8px;cursor:pointer}'+
-      '.uls-dev-btn:hover{background:#242d3e}'+
-      '#uls-dev-log{margin-top:8px;height:120px;overflow:auto;background:#0a0c10;border:1px solid #202634;border-radius:6px;padding:6px;color:#9fb0c9}'+
-      '.mini #uls-dev-body{display:none} #uls-dev-head #uls-dev-fold{cursor:pointer}'+
-      '#uls-dev-watermark{position:fixed;top:8px;left:8px;z-index:999998;background:rgba(255,40,40,.10);border:1px solid rgba(255,60,60,.35);color:#ff6b6b;font:600 11px/1 system-ui,Arial;padding:4px 6px;border-radius:6px;backdrop-filter:blur(2px);pointer-events:none;letter-spacing:.6px;text-transform:uppercase}'+
-      '#uls-dev-watermark::after{content:"DEV";} .uls-dev-hidden{display:none !important;}';
-    document.head.appendChild(css);
-    document.body.appendChild(wrap);
-
-    var mark=document.createElement('div'); mark.id='uls-dev-watermark'; document.body.appendChild(mark);
-
-    // --- drag, fold, toggle logic ---
-    (function(){
-      var head=q('uls-dev-head'), hud=q('uls-dev-hud'), wm=q('uls-dev-watermark');
-      var px=0, py=0, ox=0, oy=0;
-      head.onmousedown=function(e){ ox=e.clientX; oy=e.clientY; document.onmousemove=mm; document.onmouseup=mu; };
-      function mm(e){ px=hud.offsetLeft+(e.clientX-ox); py=hud.offsetTop+(e.clientY-oy); ox=e.clientX; oy=e.clientY; hud.style.left='auto'; hud.style.right='auto'; hud.style.top=Math.max(8,Math.min(window.innerHeight-60,py))+'px'; hud.style.left=Math.max(8,Math.min(window.innerWidth-60,px))+'px'; }
-      function mu(){ document.onmousemove=null; document.onmouseup=null; }
-      q('uls-dev-fold').onclick=function(){ hud.classList.toggle('mini'); this.textContent=hud.classList.contains('mini')?'▸':'▾'; };
-      function setHidden(h){ hud.classList.toggle('uls-dev-hidden',h); wm.classList.toggle('uls-dev-hidden',h); try{sessionStorage.setItem('uls.dev.hud.hidden',h?'1':'0');}catch(e){} log('HUD '+(h?'hidden':'shown')); }
-      document.addEventListener('keydown',function(e){ if(e.ctrlKey&&e.shiftKey&&(e.key==='D'||e.key==='d')){setHidden(!hud.classList.contains('uls-dev-hidden'));e.preventDefault();} });
-      try{if(sessionStorage.getItem('uls.dev.hud.hidden')==='1')setHidden(true);}catch(e){}
-    })();
-
-    // --- buttons ----
-    var g=q('sec-global'),lh=q('sec-lh'),dw=q('sec-dw'),bk=q('sec-bk'),ia=q('sec-ia'),sfx=document.createElement('div');
-    sfx.className = 'sec';
-    sfx.innerHTML = '<div class="sec-t">SFX</div><div class="sec-b" id="sec-sfx"></div>';
-    q('uls-dev-body').insertBefore(sfx, q('uls-dev-log'));
-
-    var sfxSec = q('sec-sfx');
-
-    g.appendChild(btn('Detect',function(){ log('LH: '+!!window.LH); log('UI: '+!!window.UI); log('Hotpatch: '+!!window.Hotpatch); log('GameAudio: '+!!window.GameAudio); }));
-    g.appendChild(btn('Clear',function(){ q('uls-dev-log').innerHTML=''; }));
-    lh.appendChild(btn('Open',function(){ window.eventBus.publish('router.go',{to:'living-hell'}); }));
-    dw.appendChild(btn('Open',function(){ window.eventBus.publish('router.go',{to:'dreamworld'}); }));
-    bk.appendChild(btn('Open',function(){ window.eventBus.publish('router.go',{to:'backrooms'}); }));
-    ia.appendChild(btn('Wallet +$50',function(){ window.LH.applyEconomyDelta({cash:50,reason:'harness'}); }));
-    ia.appendChild(btn('Fame +5',function(){ window.LH.applyEconomyDelta({fame:5,reason:'harness'}); }));
-    ia.appendChild(btn('Credits',function(){ window.UI.Credits.open({player:{name:'Tester'},stats:{earned:123}}); }));
-    ia.appendChild(btn('Hotpatch',function(){ window.Hotpatch.apply('test.patch',"window.TEST_OK=true"); }));
+    var sceneSec = q('sec-scene'), sfxSec = q('sec-sfx');
+    sceneSec.appendChild(btn('City Day', function(){ window.SceneManager.setBackground('backgrounds.city.day.neon_core'); }));
+    sceneSec.appendChild(btn('City Night', function(){ window.SceneManager.setBackground('backgrounds.city.night.neon_heights'); }));
+    sceneSec.appendChild(btn('Apartment', function(){ window.SceneManager.setBackground('locations.apartments.player_default'); }));
+    sceneSec.appendChild(btn('Nightmare', function(){ window.SceneManager.setBackground('locations.dreamworld.nightmare'); }));
+    sceneSec.appendChild(btn('Show HUD', function(){ window.SceneManager.showOverlay('ui.hud.stats_bars', 'hud'); }));
+    sceneSec.appendChild(btn('Hide HUD', function(){ window.SceneManager.hideOverlay('hud'); }));
 
     sfxSec.appendChild(btn('Click', function(){ window.GameAudio.playSfx('ui_click'); }));
     sfxSec.appendChild(btn('Success', function(){ window.GameAudio.playSfx('success'); }));
     sfxSec.appendChild(btn('Ambience ON', function(){ window.GameAudio.playSfx('amb_city_street'); }));
     sfxSec.appendChild(btn('Ambience OFF', function(){ window.GameAudio.stopSfx('amb_city_street'); }));
-    sfxSec.appendChild(btn('Stop All', function(){ window.GameAudio.stopAll(); }));
-
-    log('Dev HUD ready');
   })();
-  </script>
-
-  <!-- =========================
-       4) Radio Module
-       ========================= -->
-  <script src="data/radio_stations.js"></script>
-  <script src="ui/radio.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      if (window.UI && window.UI.Radio) {
-        window.UI.Radio.mount(document.getElementById('radio-container'));
-      }
-    });
-  </script>
-
-  <!-- =========================
-       5) SFX System
-       ========================= -->
-  <script src="data/sfx_data.js"></script>
-  <script src="systems/audio.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      if (window.GameAudio && window.SFX_PAYLOAD) {
-        console.log('Initializing SFX System...');
-        const payload = window.SFX_PAYLOAD;
-        if (payload.sfx_packs) {
-          payload.sfx_packs.forEach(pack => window.GameAudio.registerPack(pack));
-        }
-        if (payload.routing) {
-          window.GameAudio.setRouting(payload.routing);
-        }
-        console.log('SFX System Ready. ' + window.GameAudio.sfx.size + ' sounds loaded.');
-      }
-    });
   </script>
 </body>
 </html>
