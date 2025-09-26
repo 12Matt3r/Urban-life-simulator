@@ -38,6 +38,8 @@
       <div class="sep"></div>
       <p class="hint">Tip: Open DevTools console to see extra logs from patches and events.</p>
     </div>
+
+    <div id="radio-container" style="margin-top: 24px;"></div>
   </div>
 
   <!-- =========================
@@ -219,6 +221,19 @@
 
     log('Dev HUD ready');
   })();
+  </script>
+
+  <!-- =========================
+       4) Radio Module
+       ========================= -->
+  <script src="data/radio_stations.js"></script>
+  <script src="ui/radio.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      if (window.UI && window.UI.Radio) {
+        window.UI.Radio.mount(document.getElementById('radio-container'));
+      }
+    });
   </script>
 </body>
 </html>

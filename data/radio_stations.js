@@ -1,0 +1,95 @@
+(function(global) {
+  const STATIONS_DATA = {
+    latin: {
+      id: 'latin',
+      name: 'LATIN',
+      tracks: [
+        { title: 'Mi tesoro (feat. Nicky Jam)', url: 'https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/latin/Zion%20%26%20Lennox%20-%20Mi%20tesoro%20%28feat.%20Nicky%20Jam%29%20%28Official%20Video%29.mp3' },
+        { title: 'Hola (Remix)', url: 'https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/latin/Dalex%2C%20Lenny%20Tav%C3%A1rez%2C%20Chencho%20Corleone%20-%20Hola%20%28Remix%29%20ft.%20Juhn%2C%20D%C3%ADmelo%20Flow%20%28Video%20Oficial%29.mp3' },
+        { title: 'La Curiosidad', url: 'https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/latin/Jay%20Wheeler%2C%20DJ%20Nelson%20%26%20Myke%20Towers%20-%20La%20Curiosidad%20%28Blue%20Grand%20Prix%29%20%28Video%29.mp3' },
+        { title: 'Toda (Remix)', url: 'https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/latin/Alex%20Rose%20-%20Toda%20%28Remix%29%20ft.%20Cazzu%2C%20Lenny%20Tavarez%2C%20Lyanno%20%26%20Rauw%20Alejandro%20%28Video%20Oficial%29.mp3' },
+        { title: 'Síguelo Bailando', url: 'https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/latin/Ozuna%20-%20S%C3%ADguelo%20Bailando%20%28Video%20Oficial%29.mp3' },
+        { title: 'Se Preparó', url: 'https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/latin/Ozuna%20-%20Se%20Prepar%C3%B3%20%28Video%20Oficial%29%20%20Odisea.mp3' },
+        { title: 'Criminal', url: 'https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/latin/Natti%20Natasha%20%20Ozuna%20-%20Criminal%20%28Official%20Video%29.mp3' },
+        { title: 'Me Niego', url: 'https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/latin/Reik%20-%20Me%20Niego%20ft.%20Ozuna%2C%20Wisin%20%28Official%20Video%29.mp3' },
+        { title: 'Danza Kuduro', url: 'https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/latin/Don%20Omar%20-%20Danza%20Kuduro%20ft.%20Lucenzo.mp3' },
+        { title: 'Bailando', url: 'https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/latin/Enrique%20Iglesias%20-%20BAILANDO%20%28Espa%C3%B1ol%29%20ft.%20Descemer%20Bueno%2C%20Gente%20De%20Zona.mp3' },
+        { title: 'Despacito', url: 'https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/latin/Luis%20Fonsi%20-%20Despacito%20ft.%20Daddy%20Yankee.mp3' },
+        { title: 'Gasolina', url: 'https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/latin/Daddy%20Yankee%20-%20Gasolina%20%28Video%20Oficial%29.mp3' }
+      ]
+    },
+    dubstep: {
+      id: 'dubstep',
+      name: 'DUBSTEP',
+      tracks: [
+        // WAVs
+        { title: "collard greens with a side of brain rott", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/collard%20greens%20with%20a%20side%20of%20brain%20rott.wav" },
+        { title: "muahahahaha (sofa sauce)", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/muahahahaha%20%28%20sofa%20sauce%29.wav" },
+        { title: "1damn it", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/1damn%20it.wav" },
+        { title: "Grind On Me (Sofa King Sad Boi)", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Grind%20On%20Me%20%28Sofa%20King%20Sad%20Boi%29.wav" },
+        { title: "oh damn", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/oh%20damn.wav" },
+        { title: "damnit bobby", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/damnit%20bobby.wav" },
+        { title: "in romania we trust", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/in%20romania%20we%20trust.wav" },
+        { title: "damn", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/damn.wav" },
+        { title: "Sir This Is a Wendy’s (Trance Mix)", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Sir%20This%20Is%20a%20Wendy%E2%80%99s%20%28Trance%20Mix%29.wav" },
+        { title: "1marshmellos are a gateway drug", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/1marshmellos%20are%20a%20gateway%20drug.wav" },
+        { title: "damn daniel", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/damn%20daniel.wav" },
+        { title: "damn get fucked", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/damn%20get%20fucked.wav" },
+        { title: "birds be chirpin", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/birds%20be%20chirpin.wav" },
+        { title: "Cant trust nobody (Rebirth)", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/1Sofa_king_sad_boi-Cant_trust_nobody_Rebirth.wav" },
+        { title: "1damn son", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/1damn%20son.wav" },
+        // MP3s (batch 1)
+        { title: "Hair Transformation", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Hair%20Transformation.mp3" },
+        { title: "8 Minute Smoke Break", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/8%20Minute%20Smoke%20Break.mp3" },
+        { title: "Fading Phantoms", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Fading%20Phantoms.mp3" },
+        { title: "Flickering Memories", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Flickering%20Memories.mp3" },
+        { title: "baby sliick", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/baby%20sliick.mp3" },
+        { title: "unseen fragments of reality", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/unseen%20fragments%20of%20reality.mp3" },
+        { title: "Between the Lines", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Between%20the%20Lines.mp3" },
+        { title: "OOTD (Outfit of the Day) Did I Stutter", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/OOTD%20%28Outfit%20of%20the%20Day%29%20Did%20I%20Stutter.mp3" },
+        { title: "Dreams in the Aftermath", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Dreams%20in%20the%20Aftermath.mp3" },
+        { title: "The Light We Left Behind", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/The%20Light%20We%20Left%20Behind.mp3" },
+        { title: "POV (Point of View)", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/POV%20%28Point%20of%20View%29.mp3" },
+        { title: "Fathom the Phantom", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Fathom%20the%20Phantom.mp3" },
+        { title: "Fractal Realities", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Fractal%20Realities.mp3" },
+        { title: "Sawing Out The Gutter Logs", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Sawing%20Out%20The%20Gutter%20Logs.mp3" },
+        { title: "Disqualified", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Disqualified.mp3" },
+        { title: "Beyond the Fray", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Beyond%20the%20Fray.mp3" },
+        { title: "Midnight House Fever (12matt3r ViP)", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Midnight%20House%20Fever%20%2812matt3r%20ViP%29.mp3" },
+        { title: "House in My Heart", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/House%20in%20My%20Heart.mp3" },
+        { title: "House Vibes Only", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/House%20Vibes%20Only.mp3" },
+        { title: "Vibe Check", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Vibe%20Check.mp3" },
+        { title: "GRWM (Get Ready With Me)", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/GRWM%20%28Get%20Ready%20With%20Me%29.mp3" },
+        { title: "Chevy to the Levy", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Chevy%20to%20the%20Levy.mp3" },
+        { title: "Day in the Life (Remix)", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Day%20in%20the%20Life%20%28Remix%29.mp3" },
+        { title: "clean with me", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/clean%20with%20me.mp3" },
+        { title: "Viral cliché Dubstep Banger", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Viral%20clich%C3%A9%20Dubstep%20Banger.mp3" },
+        { title: "that clicky woodpecker song", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/that%20clicky%20woodpecker%20song.mp3" },
+        { title: "Hidden Dimensions", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Hidden%20Dimensions.mp3" },
+        { title: "House Vibrations", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/House%20Vibrations.mp3" },
+        { title: "Deep in the Bass Caves", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Deep%20in%20the%20Bass%20Caves.mp3" },
+        { title: "Neon Dreams", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Neon%20Dreams.mp3" },
+        { title: "Voltage Therapy", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Voltage%20Therapy.mp3" },
+        { title: "Shattered Spectrum", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Shattered%20Spectrum.mp3" },
+        { title: "Underground Pulse", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Underground%20Pulse.mp3" },
+        { title: "Bassline Ritual", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Bassline%20Ritual.mp3" },
+        { title: "Haunted Subwoofers", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Haunted%20Subwoofers.mp3" },
+        { title: "Digital Serpent", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimátor/dubstep/Digital%20Serpent.mp3" },
+        { title: "Warped Dimensions", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Warped%20Dimensions.mp3" },
+        { title: "Meltdown Protocol", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Meltdown%20Protocol.mp3" },
+        { title: "Ghost in the Wubs", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Ghost%20in%20the%20Wubs.mp3" },
+        { title: "Infinite Drop", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Infinite%20Drop.mp3" },
+        { title: "Noise Complaint", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Noise%20Complaint.mp3" },
+        { title: "Blackout Riddim", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Blackout%20Riddim.mp3" },
+        { title: "Sofa Sauce VIP", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Sofa%20Sauce%20VIP.mp3" },
+        { title: "Rattle My Brainstem", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Rattle%20My%20Brainstem.mp3" },
+        { title: "Monster in the Sub", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Monster%20in%20the%20Sub.mp3" },
+        { title: "Static Surge", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Static%20Surge.mp3" },
+        { title: "Echo Chamber Collapse", url: "https://file.garden/aNQEj1MKyWDQ8eyI/urbanlifesimulator/dubstep/Echo%20Chamber%20Collapse.mp3" }
+      ]
+    }
+  };
+
+  global.RADIO_STATIONS = STATIONS_DATA;
+
+})(window);
