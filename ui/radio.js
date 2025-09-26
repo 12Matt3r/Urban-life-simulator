@@ -127,10 +127,10 @@
         }
         elAudio.src = track.url;
         elAudio.load();
-        elAudio.oncanplaythrough = function() {
+        elAudio.onloadeddata = function() {
             elAudio.currentTime = resumeTime ? state.t : 0;
             elAudio.volume = state.vol;
-            elAudio.play().catch(e => console.error("Radio play failed:", e));
+            elAudio.play().catch(e => console.error("Radio play failed on load:", e));
             state.t = 0;
             saveState();
             updateUI();
@@ -142,8 +142,24 @@
       }
 
       function play() {
-        if (state.power && elAudio.src) {
-          elAudio.play().catch(e => console.error("Radio play failed:", e));
+        if (!state.power || !elAudio.src) return;
+        // If audio is not in a playable state, reload it.
+        if (elAudio.readyState === 0 && getCurrentTrack()) {
+          console.warn("Audio not ready. Attempting to reload track.");
+          loadAndPlay(false);
+          return;
+        }
+        const promise = elAudio.play();
+        if (promise !== undefined) {
+          promise.catch(e => {
+            console.error("Radio play failed:", e);
+            // If play fails, it might be due to a deeper issue. Try a full reload.
+            if (e.name === 'NotAllowedError') {
+               console.error("Autoplay was prevented. User interaction is required.");
+            } else {
+               loadAndPlay(false);
+            }
+          });
         }
       }
 
