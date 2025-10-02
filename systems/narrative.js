@@ -8,7 +8,7 @@
     sequences: {
       'tutorial': [
         { type: 'log', message: 'You are a disembodied consciousness, floating over the neon-drenched expanse of Chroma City.' },
-        { type: 'scene', assetPath: 'backgrounds.city.night.neon_heights', duration: 3000 },
+        { type: 'scene', assetPath: 'backgrounds.city.night.skyline', duration: 3000 },
         { type: 'log', message: 'A pull. A tug. A sense of falling...' },
         { type: 'delay', duration: 2000 },
         { type: 'scene', assetPath: 'backgrounds.apartments.playerDefault' },

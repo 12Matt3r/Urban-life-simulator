@@ -58,6 +58,20 @@
       gameAudio: global.GameAudio
     });
     global.UI.CreditsScreen.init(registry.credits);
+    global.UI.NarrativeDisplay.init({
+      container: document.getElementById('narrative-container'),
+      eventBus: global.eventBus
+    });
+
+    // Populate radio stations from the registry
+    if (registry.audio && registry.audio.stations) {
+      const stationsById = {};
+      for (const st of registry.audio.stations) {
+        stationsById[st.id] = st;
+      }
+      global.RADIO_STATIONS = stationsById;
+      console.log('Radio stations initialized.');
+    }
 
     // The radio has its own data source now, but we'll mount it here
     const radioContainer = document.getElementById('radio-container');
@@ -65,13 +79,16 @@
       // The radio UI is created first
       global.UI.Radio.mount(radioContainer);
       // Then its logic is initialized, which now reads from global.RADIO_STATIONS
-      if (global.ULSRadio) {
-        global.ULSRadio.init();
+      if (global.UI.Radio) {
+        global.UI.Radio.init();
       }
     }
 
     console.log('All systems initialized.');
     global.eventBus.publish('game:ready');
+
+    // Auto-start the tutorial, as per fix instructions.
+    global.NarrativeManager.startSequence('tutorial');
   }
 
   // Expose the loader to the global scope
