@@ -6,30 +6,6 @@
     activePlaylist: [],
     el: {},
 
-    mount: function(container) {
-      container.innerHTML = `
-        <div id="uls-radio" class="card">
-            <audio id="radio-audio"></audio>
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-                <h2 style="font-size: 16px; margin: 0;">ULS Radio</h2>
-                <div id="radio-station" style="font-style: italic; color: var(--muted);">—</div>
-            </div>
-            <div id="radio-title" style="margin: 12px 0; text-align: center; font-size: 14px; min-height: 1.5em;">Power OFF</div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <button id="radio-power" class="uls-dev-btn">PWR</button>
-                <button id="radio-prev" class="uls-dev-btn">◀</button>
-                <button id="radio-play" class="uls-dev-btn">▶</button>
-                <button id="radio-pause" class="uls-dev-btn">❚❚</button>
-                <button id="radio-next" class="uls-dev-btn">▶</button>
-                <button id="radio-shuffle" class="uls-dev-btn">SHFL</button>
-                <input type="range" id="radio-vol" min="0" max="1" step="0.05" style="flex-grow: 1;">
-            </div>
-            <div id="radio-time" style="text-align: center; margin-top: 8px; font-size: 12px; color: var(--muted);">00:00 / 00:00</div>
-            <div id="radio-stations" style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px;"></div>
-        </div>
-      `;
-    },
-
     init: function() {
       const firstStationId = Object.keys(global.RADIO_STATIONS || {})[0] || 'none';
       const defaults = { power: false, station: firstStationId, index: 0, vol: 0.8, t: 0, shuffle: false };
@@ -216,7 +192,8 @@
     fmt: function(s) { s=Math.floor(s||0); return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0'); }
   };
 
-  global.UI = global.UI || {};
-  global.UI.Radio = ULSRadio;
+  const UI = global.UI || {};
+  UI.Radio = ULSRadio;
+  global.UI = UI;
 
 })(window);

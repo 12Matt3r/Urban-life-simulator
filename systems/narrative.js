@@ -5,22 +5,6 @@
     gameManager: null,
     sceneManager: null,
     eventBus: null,
-    sequences: {
-      'tutorial': [
-        { type: 'log', message: 'You are a disembodied consciousness, floating over the neon-drenched expanse of Chroma City.' },
-        { type: 'scene', assetPath: 'backgrounds.city.night.skyline', duration: 3000 },
-        { type: 'log', message: 'A pull. A tug. A sense of falling...' },
-        { type: 'delay', duration: 2000 },
-        { type: 'scene', assetPath: 'backgrounds.apartments.playerDefault' },
-        { type: 'log', message: 'You wake up with a gasp. The smell of stale synth-coffee fills your small apartment.' },
-        { type: 'log', message: 'A notification buzzes on your phone: "Your first ride-share pickup is in 10 minutes."' },
-        { type: 'advance_time', minutes: 1 },
-        { type: 'log', message: 'You head out into the city.'},
-        { type: 'scene', assetPath: 'backgrounds.city.day.market' },
-        { type: 'log', message: 'Welcome to Urban Life Simulator. Seize the day.' },
-        { type: 'end_sequence', sequenceId: 'tutorial' }
-      ]
-    },
     currentSequence: null,
     currentIndex: 0,
 
@@ -31,14 +15,25 @@
       console.log('NarrativeManager initialized.');
     },
 
-    startSequence: function(sequenceId) {
-      const sequence = this.sequences[sequenceId];
-      if (sequence) {
+    startSequence: async function(sequenceId) {
+      if (this.currentSequence) {
+        console.warn('Another sequence is already in progress.');
+        return;
+      }
+
+      const path = `narratives/${sequenceId}.json`;
+      try {
+        const response = await fetch(path, { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error(`Network response was not ok: ${response.statusText}`);
+        }
+        const sequence = await response.json();
+
         this.currentSequence = sequence;
         this.currentIndex = 0;
         this.executeNextEvent();
-      } else {
-        console.error('Sequence not found:', sequenceId);
+      } catch (error) {
+        console.error('Failed to load narrative sequence:', sequenceId, error);
       }
     },
 

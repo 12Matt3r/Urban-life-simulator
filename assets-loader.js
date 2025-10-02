@@ -11,7 +11,7 @@
       const registry = await response.json();
       console.log('Asset registry loaded, version:', registry.version);
 
-      initializeAllSystems(registry);
+      await initializeAllSystems(registry);
       return registry;
     } catch (error) {
       console.error('Could not load or parse asset registry:', error);
@@ -20,7 +20,7 @@
     }
   }
 
-  function initializeAllSystems(registry) {
+  async function initializeAllSystems(registry) {
     // 1. Create a global event bus
     const eventBus = {
       subs: {},
@@ -73,22 +73,17 @@
       console.log('Radio stations initialized.');
     }
 
-    // The radio has its own data source now, but we'll mount it here
+    // The radio is initialized here, assuming its HTML is in index.html
     const radioContainer = document.getElementById('radio-container');
-    if (radioContainer) {
-      // The radio UI is created first
-      global.UI.Radio.mount(radioContainer);
-      // Then its logic is initialized, which now reads from global.RADIO_STATIONS
-      if (global.UI.Radio) {
-        global.UI.Radio.init();
-      }
+    if (radioContainer && global.UI.Radio) {
+      global.UI.Radio.init();
     }
 
     console.log('All systems initialized.');
     global.eventBus.publish('game:ready');
 
     // Auto-start the tutorial, as per fix instructions.
-    global.NarrativeManager.startSequence('tutorial');
+    await global.NarrativeManager.startSequence('tutorial');
   }
 
   // Expose the loader to the global scope
