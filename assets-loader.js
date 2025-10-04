@@ -1,27 +1,6 @@
 (function(global) {
   'use strict';
 
-  // Helper function to create a clean title from a URL
-  function createTitleFromUrl(url) {
-    try {
-      var filename = url.substring(url.lastIndexOf('/') + 1);
-      filename = decodeURIComponent(filename.replace(/\+/g, ' '));
-      var title = filename.substring(0, filename.lastIndexOf('.'));
-      title = title.replace(/_/g, ' ').replace(/%20/g, ' ').replace(/-/g, ' ').trim();
-      return title.split(' ').map(function(word) {
-        return word.charAt(0).toUpperCase() + word.substring(1);
-      }).join(' ');
-    } catch (e) {
-      return "Untitled";
-    }
-  }
-
-  function createTracks(urls) {
-    return urls.map(function(url) {
-      return { title: createTitleFromUrl(url), url: url };
-    });
-  }
-
   async function loadAssetsRegistry(url) {
     url = url || 'assets.json';
     try {
@@ -32,62 +11,70 @@
       const registry = await response.json();
       console.log('Asset registry loaded, version:', registry.version);
 
-      initializeSystems(registry);
+      initializeAllSystems(registry);
       return registry;
     } catch (error) {
       console.error('Could not load or parse asset registry:', error);
+      document.body.innerHTML = '<div style="color:red; text-align:center; padding-top:50px;"><h1>Error</h1><p>Failed to load critical game assets. Please check the console.</p></div>';
       return null;
     }
   }
 
-  function initializeSystems(registry) {
-    // 1. Initialize AssetManager
-    if (global.AssetManager) {
-      global.AssetManager.init(registry);
+  function initializeAllSystems(registry) {
+    // 1. Create a global event bus
+    const eventBus = {
+      subs: {},
+      subscribe: function(topic, fn) { (this.subs[topic] = this.subs[topic] || []).push(fn); },
+      publish: function(topic, data) { (this.subs[topic] || []).forEach(fn => fn(data)); }
+    };
+    global.eventBus = eventBus;
+
+    // 2. Initialize Managers that don't depend on others first
+    global.AssetManager.init(registry);
+    global.GameAudio.init({ assetManager: global.AssetManager });
+    global.GameManager.init({ eventBus: global.eventBus });
+
+    // 3. Initialize Managers that depend on others
+    global.SceneManager.init({
+      gameContainer: document.getElementById('game-container'),
+      overlayContainer: document.getElementById('overlay-container'),
+      assetManager: global.AssetManager
+    });
+    global.NarrativeManager.init({
+      gameManager: global.GameManager,
+      sceneManager: global.SceneManager,
+      eventBus: global.eventBus
+    });
+    global.AdsManager.init(registry.ads);
+
+    // 4. Initialize UI Components
+    global.UI.PlayerHUD.init({
+      container: document.getElementById('hud-container'),
+      assetManager: global.AssetManager,
+      eventBus: global.eventBus
+    });
+    global.UI.Shop.init({
+      gameManager: global.GameManager,
+      gameAudio: global.GameAudio
+    });
+    global.UI.CreditsScreen.init(registry.credits);
+
+    // The radio has its own data source now, but we'll mount it here
+    const radioContainer = document.getElementById('radio-container');
+    if (radioContainer) {
+      // The radio UI is created first
+      global.UI.Radio.mount(radioContainer);
+      // Then its logic is initialized, which now reads from global.RADIO_STATIONS
+      if (global.ULSRadio) {
+        global.ULSRadio.init();
+      }
     }
 
-    // 2. Initialize SceneManager
-    if (global.SceneManager) {
-      global.SceneManager.init({
-        gameContainer: document.getElementById('game-container'),
-        overlayContainer: document.getElementById('overlay-container'),
-        assetManager: global.AssetManager
-      });
-    }
-
-    // 3. Prepare and Load Radio Station Data
-    if (registry.audio && registry.audio.stations) {
-      const stationsObject = {};
-      registry.audio.stations.forEach(function(station) {
-        stationsObject[station.id] = {
-          id: station.id,
-          name: station.name,
-          shuffle: !!station.shuffle,
-          gain: station.gain || 1.0,
-          tracks: createTracks(station.urls)
-        };
-      });
-      global.RADIO_STATIONS = stationsObject;
-      console.log('Radio station data prepared for radio module.');
-    }
-
-    // 4. Register SFX with GameAudio
-    if (global.GameAudio && registry.audio && registry.audio.sfx) {
-      Object.keys(registry.audio.sfx).forEach(function(key) {
-        const path = registry.audio.sfx[key];
-        // Note: The GameAudio manager will prepend the base URL
-        global.GameAudio.sfx.set(key, { id: key, path: path, loop: false, gain: 1.0 });
-      });
-      console.log('SFX registered with GameAudio.');
-    }
-
-    // 5. Load Ads and Credits Configs
-    global.AdsConfig = registry.ads || {};
-    global.CreditsConfig = registry.credits || {};
-    global.RoutingConfig = registry.routing || {};
-    console.log('Ads, Credits, and Routing configurations loaded.');
+    console.log('All systems initialized.');
+    global.eventBus.publish('game:ready');
   }
 
+  // Expose the loader to the global scope
   global.loadAssets = loadAssetsRegistry;
 
 })(window);

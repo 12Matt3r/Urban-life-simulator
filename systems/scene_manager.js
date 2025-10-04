@@ -34,12 +34,12 @@
       if (!this.gameContainer || !this.assetManager) return;
 
       const imageUrl = this.assetManager.get(assetPath);
-      if (imageUrl) {
+      if (imageUrl && typeof imageUrl === 'string') {
         this.gameContainer.style.backgroundImage = 'url("' + imageUrl + '")';
         this.gameContainer.style.backgroundSize = 'cover';
         this.gameContainer.style.backgroundPosition = 'center';
       } else {
-        console.error('Failed to set background, asset not found:', assetPath);
+        console.error('Failed to set background, asset not found or invalid:', assetPath);
       }
     },
 
@@ -52,7 +52,7 @@
       if (!this.overlayContainer || !this.assetManager) return;
 
       const imageUrl = this.assetManager.get(assetPath);
-      if (imageUrl) {
+      if (imageUrl && typeof imageUrl === 'string') {
         const overlay = document.createElement('div');
         if (id) {
           overlay.id = id;
@@ -66,11 +66,11 @@
         overlay.style.backgroundSize = 'contain';
         overlay.style.backgroundRepeat = 'no-repeat';
         overlay.style.backgroundPosition = 'center';
-        overlay.style.zIndex = '100'; // Ensure it's on top
+        overlay.style.zIndex = '100';
         this.overlayContainer.appendChild(overlay);
         return overlay;
       } else {
-        console.error('Failed to show overlay, asset not found:', assetPath);
+        console.error('Failed to show overlay, asset not found or invalid:', assetPath);
         return null;
       }
     },
