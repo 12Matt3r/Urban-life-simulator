@@ -9,6 +9,134 @@
     init: function() {
       const firstStationId = Object.keys(global.RADIO_STATIONS || {})[0] || 'none';
       const defaults = { power: false, station: firstStationId, index: 0, vol: 0.8, t: 0, shuffle: false };
+      let state = Object.assign({}, defaults, JSON.parse(localStorage.getItem(KEY) || '{}'));
+
+      const $ = id => document.getElementById(id);
+      const elAudio = $('radio-audio'), elPower = $('radio-power'), elPlay = $('radio-play'),
+            elPause = $('radio-pause'), elNext = $('radio-next'), elPrev = $('radio-prev'),
+            elShuffle = $('radio-shuffle'), elVol = $('radio-vol'), elStationName = $('radio-station'),
+            elTitle = $('radio-title'), elTime = $('radio-time'), elStations = $('radio-stations'),
+            root = $('uls-radio');
+
+      const controls = [elPlay, elPause, elNext, elPrev, elShuffle];
+      let activePlaylist = [];
+
+      function saveState() {
+        localStorage.setItem(KEY, JSON.stringify(state));
+      }
+
+      function shuffleArray(array) {
+        var a = array.slice();
+        for (var i = a.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = a[i];
+            a[i] = a[j];
+            a[j] = temp;
+        }
+        return a;
+      }
+
+      function updateActivePlaylist() {
+        const station = STATIONS[state.station] || null;
+        if (!station || !station.tracks || station.tracks.length === 0) {
+          activePlaylist = [];
+          return;
+        }
+        if (state.shuffle) {
+          if (!station._shuffled) {
+            station._shuffled = shuffleArray(station.tracks);
+          }
+          activePlaylist = station._shuffled;
+        } else {
+          activePlaylist = station.tracks;
+          if (station._shuffled) {
+            delete station._shuffled;
+          }
+        }
+      }
+
+      function getCurrentTrack() {
+        if (!activePlaylist || activePlaylist.length === 0) return null;
+        return activePlaylist[state.index % activePlaylist.length] || null;
+      }
+
+      function guessType(u) {
+        if (!u) return 'audio/mpeg';
+        const ext = (u.split('.').pop() || '').toLowerCase();
+        if (ext === 'wav') return 'audio/wav';
+        return 'audio/mpeg';
+      }
+
+      function loadAndPlay(resumeTime) {
+        const track = getCurrentTrack();
+        if (!track) {
+          updateUI();
+          return;
+        }
+        elAudio.src = track.url;
+        elAudio.load();
+        elAudio.onloadeddata = function() {
+            elAudio.currentTime = resumeTime ? state.t : 0;
+            elAudio.volume = state.vol;
+            elAudio.play().catch(e => console.error("Radio play failed on load:", e));
+            state.t = 0;
+            saveState();
+            updateUI();
+        };
+        elAudio.onerror = function() {
+            console.error("Error loading track:", track.url);
+            next(true);
+        };
+      }
+
+      function play() {
+        if (!state.power || !elAudio.src) return;
+        // If audio is not in a playable state, reload it.
+        if (elAudio.readyState === 0 && getCurrentTrack()) {
+          console.warn("Audio not ready. Attempting to reload track.");
+          loadAndPlay(false);
+          return;
+        }
+        const promise = elAudio.play();
+        if (promise !== undefined) {
+          promise.catch(e => {
+            console.error("Radio play failed:", e);
+            // If play fails, it might be due to a deeper issue. Try a full reload.
+            if (e.name === 'NotAllowedError') {
+               console.error("Autoplay was prevented. User interaction is required.");
+            } else {
+               loadAndPlay(false);
+            }
+          });
+        }
+      }
+
+      function pause() { elAudio.pause(); }
+
+      function next(isErrorSkip) {
+        if (activePlaylist.length === 0) return;
+        state.index = (state.index + 1) % activePlaylist.length;
+        if (!isErrorSkip) state.t = 0;
+        saveState();
+        if (state.power) loadAndPlay(false);
+      }
+
+      function prev() {
+        if (activePlaylist.length === 0) return;
+        state.index = (state.index - 1 + activePlaylist.length) % activePlaylist.length;
+        state.t = 0;
+        saveState();
+        if (state.power) loadAndPlay(false);
+      }
+
+      function toggleShuffle() {
+        if (!state.power) return;
+        var currentTrackUrl = getCurrentTrack() ? getCurrentTrack().url : null;
+        state.shuffle = !state.shuffle;
+
+        var station = STATIONS[state.station] || null;
+        if (station && station._shuffled) {
+            delete station._shuffled;
       this.state = Object.assign({}, defaults, JSON.parse(localStorage.getItem('uls_radio_state') || '{}'));
 
       this.el.audio = document.getElementById('radio-audio');
@@ -188,6 +316,16 @@
       });
     },
 
+      updateActivePlaylist();
+      updateUI();
+      if (state.power) {
+        loadAndPlay(true);
+      }
+
+      global.ULSRadio = { STATIONS, togglePower, play, pause, next, prev, setStation, setVolume, mute: (on) => { elAudio.muted = !!on; }, toggleShuffle };
+      console.log('Radio logic initialized with ' + Object.keys(STATIONS).length + ' stations.');
+    })();
+  }
     shuffleArray: function(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; },
     fmt: function(s) { s=Math.floor(s||0); return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0'); }
   };
