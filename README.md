@@ -46,27 +46,40 @@ Explore four distinct realms, each offering a unique experience:
 
 To run the project locally, follow these steps:
 
-1.  **Clone the Repository:**
+1.  **Prerequisites:**
+    -   You must have [Node.js](https://nodejs.org/) installed to run the local server.
+
+2.  **Clone the Repository:**
     ```bash
     git clone https://github.com/your-username/your-repo-name.git
     cd your-repo-name
     ```
 
-2.  **Configure Environment (Optional - for Supabase):**
-    If you want to connect to a Supabase backend for cloud saves, you need to create a `env.js` file in the root of the project. If this file is not present, the game will fall back to using `localStorage`.
+3.  **Install Dependencies:**
+    Install the necessary packages using npm:
+    ```bash
+    npm install
+    ```
 
-    Create `env.js` and add the following lines with your Supabase project details:
+4.  **Run the Game:**
+    Start the local development server:
+    ```bash
+    npm start
+    ```
+    This will serve the game on a local port (usually `http://localhost:8080`) and automatically open it in your default web browser. A server is required to avoid browser security restrictions (`CORS`) that prevent loading game assets from the local `file://` system.
+
+5.  **Configure Environment (Optional - for Supabase):**
+    If you want to connect to a Supabase backend for cloud saves, create an `env.js` file in the root of the project. If this file is not present, the game will fall back to using `localStorage`.
+
+    Create `env.js` and add your Supabase project details:
     ```javascript
     window.SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
     window.SUPABASE_KEY = "YOUR_ANON_KEY";
     ```
 
-3.  **Run the Game:**
-    Simply open the `index.html` file in a modern web browser that supports ES5 (like Chrome, Firefox, or Safari). No build step is required.
-
-4.  **Developer Mode:**
+6.  **Developer Mode:**
     To access the Dev Test Harness, add `?dev=1` to the end of the URL.
-    `file:///path/to/your/project/index.html?dev=1`
+    Example: `http://localhost:8080/?dev=1`
 
 ## 🎮 How to Play
 

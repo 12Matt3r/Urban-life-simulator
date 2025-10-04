@@ -1,0 +1,20 @@
+{
+  "name": "urban-life-simulator",
+  "version": "1.0.0",
+  "description": "A multi-realm, browser-based RPG.",
+  "main": "index.html",
+  "scripts": {
+    "start": "http-server -c-1"
+  },
+  "keywords": [
+    "rpg",
+    "browser-game",
+    "vanilla-js"
+  ],
+  "author": "ULS Team",
+  "license": "UNLICENSED",
+  "dependencies": {},
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
