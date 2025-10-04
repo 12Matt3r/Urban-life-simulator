@@ -35,34 +35,9 @@
   </div>
 
   <!-- =========================
-       CORE SYSTEMS & LOADER
+       VITE ENTRY POINT
        ========================= -->
-  <script src="systems/asset_manager.js"></script>
-  <script src="systems/scene_manager.js"></script>
-  <script src="systems/audio.js"></script>
-  <script src="systems/game.js"></script>
-  <script src="systems/narrative.js"></script>
-  <script src="systems/ads.js"></script>
-  <script src="ui/radio.js"></script>
-  <script src="ui/credits.js"></script>
-  <script src="ui/hud.js"></script>
-  <script src="ui/shop.js"></script>
-  <script src="assets-loader.js"></script>
-
-  <!-- =========================
-       INITIALIZATION
-       ========================= -->
-  <script>
-    (function(global) {
-      document.addEventListener('DOMContentLoaded', function() {
-        if (global.loadAssets) {
-          global.loadAssets('assets.json');
-        } else {
-           document.body.innerHTML = '<div style="color:red; text-align:center; padding-top:50px;"><h1>Fatal Error</h1><p>Asset loader not found.</p></div>';
-        }
-      });
-    })(window);
-  </script>
+  <script type="module" src="/src/main.js"></script>
 
   <!-- =========================
        DEV TEST HARNESS
