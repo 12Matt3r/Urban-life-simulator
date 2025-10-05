@@ -1,23 +1,16 @@
 'use strict';
 
-// Import the modules we have already refactored
+// Import all the game systems and UI components as ES6 modules.
 import { AssetManager } from './systems/asset_manager.js';
 import { GameManager } from './systems/game.js';
-
-// --- TEMPORARY MIGRATION STEP ---
-// The files below are not yet ES modules. Importing them ensures they execute
-// and attach themselves to the global `window` object, allowing the game
-to
-// function during the refactoring process.
-import './systems/audio.js';
-import './systems/scene_manager.js';
-import './systems/narrative.js';
-import './systems/ads.js';
-import './ui/radio.js';
-import './ui/credits.js';
-import './ui/hud.js';
-import './ui/shop.js';
-// --- END TEMPORARY MIGRATION STEP ---
+import { GameAudio } from './systems/audio.js';
+import { SceneManager } from './systems/scene_manager.js';
+import { NarrativeManager } from './systems/narrative.js';
+import { AdsManager } from './systems/ads.js';
+import { CreditsScreen } from './ui/credits.js';
+import { PlayerHUD } from './ui/hud.js';
+import { ULSRadio } from './ui/radio.js';
+import { Shop } from './ui/shop.js';
 
 // The event bus is a singleton that facilitates communication between systems.
 const eventBus = {
@@ -31,49 +24,60 @@ const eventBus = {
  * @param {object} registry - The loaded asset manifest from assets.json.
  */
 function initializeAllSystems(registry) {
-  // Initialize refactored modules via direct import
+  // Initialize all managers with their dependencies.
   AssetManager.init(registry);
   GameManager.init({ eventBus });
-
-  // Initialize legacy modules from the global scope (for now)
-  window.GameAudio.init({ assetManager: AssetManager });
-  window.SceneManager.init({
+  GameAudio.init({ assetManager: AssetManager });
+  SceneManager.init({
     gameContainer: document.getElementById('game-container'),
     overlayContainer: document.getElementById('overlay-container'),
     assetManager: AssetManager
   });
-  window.NarrativeManager.init({
+  NarrativeManager.init({
     gameManager: GameManager,
-    sceneManager: window.SceneManager,
+    sceneManager: SceneManager,
     eventBus: eventBus
   });
-  window.AdsManager.init(registry.ads);
-  window.UI.PlayerHUD.init({
+  AdsManager.init(registry.ads);
+
+  // Initialize all UI components.
+  PlayerHUD.init({
     container: document.getElementById('hud-container'),
     assetManager: AssetManager,
     eventBus: eventBus
   });
-  window.UI.Shop.init({
+  Shop.init({
     gameManager: GameManager,
-    gameAudio: window.GameAudio
+    gameAudio: GameAudio
   });
-  window.UI.CreditsScreen.init(registry.credits);
+  CreditsScreen.init(registry.credits);
 
+  // Mount and initialize the radio.
   const radioContainer = document.getElementById('radio-container');
   if (radioContainer) {
-    window.UI.Radio.mount(radioContainer);
-    if (window.ULSRadio) {
-      window.ULSRadio.init();
-    }
+    ULSRadio.mount(radioContainer);
+    // Pass the station data from the asset registry to the radio's init function.
+    const radioStations = registry.audio.stations.reduce((acc, station) => {
+        acc[station.id] = station;
+        return acc;
+    }, {});
+    ULSRadio.init({ stations: radioStations });
   }
 
   // --- TEMPORARY: Expose objects to window for the Dev Harness ---
+  // This allows the existing dev harness to continue functioning during the migration.
   window.eventBus = eventBus;
-  window.NarrativeManager = window.NarrativeManager;
-  window.SceneManager = window.SceneManager;
+  window.NarrativeManager = NarrativeManager;
+  window.SceneManager = SceneManager;
   window.GameManager = GameManager;
-  window.GameAudio = window.GameAudio;
-  window.UI = window.UI;
+  window.GameAudio = GameAudio;
+  // Reconstruct the UI object for the dev harness
+  window.UI = {
+    PlayerHUD,
+    Shop,
+    CreditsScreen,
+    Radio: ULSRadio
+  };
   // --- END TEMPORARY ---
 
   console.log('All systems initialized.');
