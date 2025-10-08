@@ -32,19 +32,19 @@ Explore four distinct realms, each offering a unique experience:
 - **Comprehensive SFX System:** A dynamic sound effects system brings the world to life with UI sounds, ambient loops for different environments, and narrative enhancers for dramatic moments.
 
 ### Persistence & Narrative
-- **Supabase Backend:** The game uses Supabase for cloud-based persistence of user accounts and save data, with a localStorage fallback.
-- **WebSim Narrative Engine:** An AI-powered narrator drives the story, generating dynamic events, descriptions, and choices based on the player's actions and current state.
+- **Local Storage:** Game state is persisted in the browser's local storage.
+- **Mock Narrative Engine:** The game currently uses a mock narrative engine for development and testing. This engine simulates the basic handshake and sequence flow required by the main application.
 
 ## 🛠️ Tech Stack
 
--   **Frontend:** Vanilla JavaScript (ES5-safe), HTML5, CSS3
--   **Backend & Database:** Supabase (PostgreSQL, Auth, Storage)
--   **Narrative Engine:** WebSim (iframe integration)
+-   **Frontend:** Vanilla JavaScript (ESM), HTML5, CSS3
+-   **Development Tooling:** Vite, Vitest, Playwright
+-   **Narrative Engine:** Mock Engine (iframe integration)
 -   **Audio:** Native HTML5 `<audio>`
 
 ## 📦 Setup & Installation
 
-To run the project locally, follow these steps:
+This project uses Node.js and Vite for development.
 
 1.  **Clone the Repository:**
     ```bash
@@ -52,32 +52,34 @@ To run the project locally, follow these steps:
     cd your-repo-name
     ```
 
-2.  **Configure Environment (Optional - for Supabase):**
-    If you want to connect to a Supabase backend for cloud saves, you need to create a `env.js` file in the root of the project. If this file is not present, the game will fall back to using `localStorage`.
-
-    Create `env.js` and add the following lines with your Supabase project details:
-    ```javascript
-    window.SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
-    window.SUPABASE_KEY = "YOUR_ANON_KEY";
+2.  **Install Dependencies:**
+    ```bash
+    npm install
     ```
 
-3.  **Run the Game:**
-    Simply open the `index.html` file in a modern web browser that supports ES5 (like Chrome, Firefox, or Safari). No build step is required.
+3.  **Run the Development Server:**
+    ```bash
+    npm run dev
+    ```
+    The application will be available at `http://localhost:5173`. The server supports hot-reloading.
 
-4.  **Developer Mode:**
-    To access the Dev Test Harness, add `?dev=1` to the end of the URL.
-    `file:///path/to/your/project/index.html?dev=1`
+4.  **Run Tests:**
+    - To run unit tests: `npm run test`
+    - To run E2E verification tests: `npm run verify` (requires the dev server to be running)
+
 
 ## 🎮 How to Play
 
-1.  **Start the Game:** Open `index.html` in your browser.
+1.  **Start the Game:** Navigate to `http://localhost:5173` after running `npm run dev`.
 2.  **Character Creation:**
     -   Enter your character's name.
     -   Type any role you can imagine into the freeform input field.
     -   Choose whether to enable **Adult Mode** for a more mature experience.
 3.  **Live Your Life:**
-    -   Follow the narrative prompts presented by the AI narrator.
+    -   Follow the narrative prompts presented by the mock narrator.
     -   Make choices that will shape your story and impact your stats.
     -   Listen to the radio, explore different realms, and try to survive the challenges thrown your way.
-4.  **Use the Dev Harness (Optional):**
-    -   If running in dev mode, use the floating panel to test various game systems, such as changing scenes, playing sound effects, or modifying player stats.
+4.  **Developer Debugging:**
+    -   When the application is running, open your browser's developer console.
+    -   You can access all the core game systems via the `window.__app` object for debugging purposes.
+    -   For example, to give yourself 100 money, you could run: `window.__app.gameManager.modifyStat('money', 100)`
