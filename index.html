@@ -34,56 +34,16 @@
     <div id="radio-container" style="margin-top: 24px;"></div>
   </div>
 
-  <!-- =========================
-       VITE ENTRY POINT
-       ========================= -->
+  <!-- Narrative Engine Iframe (keep hidden) -->
+  <iframe
+    id="narrative-engine-iframe"
+    src="/modules/narrative/index.html"
+    title="Narrative Engine"
+    style="position:absolute;left:-99999px;top:-99999px;width:1px;height:1px;border:0;"
+    sandbox="allow-scripts allow-same-origin"
+  ></iframe>
+
+  <!-- Single entrypoint -->
   <script type="module" src="/src/main.js"></script>
-
-  <!-- =========================
-       DEV TEST HARNESS
-       ========================= -->
-  <script>
-  (function () {
-    function hasDevFlag(){ try { return new URLSearchParams(location.search).get('dev') === '1'; } catch (e) { return false; } }
-    if (!hasDevFlag()) return;
-
-    function q(id){ return document.getElementById(id); }
-    function btn(txt, fn){ var b=document.createElement('button'); b.className='uls-dev-btn'; b.textContent=txt; b.onclick=fn; return b; }
-
-    var hudHTML = `
-      <div id="uls-dev-hud" style="position:fixed;z-index:999999;right:12px;bottom:12px;width:360px;background:#0d0f12;color:#e6e8ec;font:11px/1.35 system-ui,Arial;border:1px solid #2a2f39;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.35);">
-        <div id="uls-dev-head" style="padding:8px 10px;background:#151922;border-bottom:1px solid #242a35;cursor:move;font-weight:600;">ULS Dev Harness</div>
-        <div id="uls-dev-body" style="padding:10px; display:flex; flex-direction:column; gap:8px;">
-            <div class="sec" style="border:1px solid #222835;border-radius:6px;overflow:hidden"><div class="sec-t" style="background:#131825;color:#b9c0cc;padding:6px 8px;font-weight:600">Game Core</div><div class="sec-b" id="sec-game" style="padding:8px;display:flex;flex-wrap:wrap;gap:6px"></div></div>
-            <div class="sec" style="border:1px solid #222835;border-radius:6px;overflow:hidden"><div class="sec-t" style="background:#131825;color:#b9c0cc;padding:6px 8px;font-weight:600">Scene</div><div class="sec-b" id="sec-scene" style="padding:8px;display:flex;flex-wrap:wrap;gap:6px"></div></div>
-            <div class="sec" style="border:1px solid #222835;border-radius:6px;overflow:hidden"><div class="sec-t" style="background:#131825;color:#b9c0cc;padding:6px 8px;font-weight:600">Audio (SFX)</div><div class="sec-b" id="sec-sfx" style="padding:8px;display:flex;flex-wrap:wrap;gap:6px"></div></div>
-        </div>
-      </div>`;
-    document.body.insertAdjacentHTML('beforeend', hudHTML);
-
-    window.addEventListener('game:ready', function() {
-        var gameSec = q('sec-game'), sceneSec = q('sec-scene'), sfxSec = q('sec-sfx');
-
-        // Game Core Buttons
-        gameSec.appendChild(btn('Start Tutorial', function(){ window.NarrativeManager.startSequence('tutorial'); }));
-        gameSec.appendChild(btn('Open Shop', function(){ window.UI.Shop.show(); }));
-        gameSec.appendChild(btn('Money +50', function(){ window.GameManager.modifyStat('money', 50); }));
-        gameSec.appendChild(btn('Health -10', function(){ window.GameManager.modifyStat('health', -10); }));
-        gameSec.appendChild(btn('Heat +1', function(){ window.GameManager.modifyStat('heat', 1); }));
-        gameSec.appendChild(btn('Show Credits', function(){ window.UI.CreditsScreen.show(); }));
-
-        // Scene Buttons
-        sceneSec.appendChild(btn('City Day', function(){ window.SceneManager.setBackground('backgrounds.city.day.neon_core'); }));
-        sceneSec.appendChild(btn('City Night', function(){ window.SceneManager.setBackground('backgrounds.city.night.neon_heights'); }));
-        sceneSec.appendChild(btn('Apartment', function(){ window.SceneManager.setBackground('backgrounds.apartments.playerDefault'); }));
-
-        // SFX Buttons
-        sfxSec.appendChild(btn('UI Click', function(){ window.GameAudio.playSfx('ui_click'); }));
-        sfxSec.appendChild(btn('Success', function(){ window.GameAudio.playSfx('success'); }));
-        sfxSec.appendChild(btn('Ambience ON', function(){ window.GameAudio.playSfx('amb_city_street'); }));
-        sfxSec.appendChild(btn('Ambience OFF', function(){ window.GameAudio.stopSfx('amb_city_street'); }));
-    });
-  })();
-  </script>
 </body>
 </html>

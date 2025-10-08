@@ -1,84 +1,29 @@
-(function(global) {
-  'use strict';
+// src/systems/audio.js
+export function createAudio(opts = {}) {
+  const Ctor = window.AudioContext || window.webkitAudioContext;
+  const ctx = opts.audioContext || new Ctor();
+  const buffers = new Map();
+  const gain = ctx.createGain();
+  gain.connect(ctx.destination);
 
-  const GameAudio = {
-    sfx: new Map(),
-    playing: new Map(),
-    assetManager: null,
+  async function load(name, url) {
+    const res = await fetch(url);
+    const buf = await ctx.decodeAudioData(await res.arrayBuffer());
+    buffers.set(name, buf);
+  }
 
-    init: function(config) {
-      this.assetManager = config.assetManager;
-      console.log('GameAudio system initialized.');
-      this.registerSfxFromManifest();
-    },
+  function play(name) {
+    const buf = buffers.get(name);
+    if (!buf) throw new Error(`Audio not loaded: ${name}`);
+    const node = ctx.createBufferSource();
+    node.buffer = buf;
+    node.connect(gain);
+    node.start();
+    return node;
+  }
 
-    registerSfxFromManifest: function() {
-        if (!this.assetManager || !this.assetManager.manifest.audio || !this.assetManager.manifest.audio.sfx_packs) {
-            console.warn("SFX packs not found in asset manifest.");
-            return;
-        }
-        const sfxPacks = this.assetManager.manifest.audio.sfx_packs;
-        sfxPacks.forEach(pack => {
-            if (pack && pack.items) {
-                pack.items.forEach(item => {
-                    this.sfx.set(item.id, item);
-                });
-            }
-        });
-        console.log(this.sfx.size + ' SFX registered.');
-    },
+  function setVolume(v) { gain.gain.value = v; }
+  async function resume() { if (ctx.state !== 'running') await ctx.resume(); }
 
-    playSfx: function(id, options) {
-      const sound = this.sfx.get(id);
-      if (!sound) {
-        console.error('SFX not found:', id);
-        return null;
-      }
-
-      if (sound.loop && this.playing.has(id)) {
-        return this.playing.get(id);
-      }
-
-      const audio = new Audio();
-      audio.src = this.assetManager.baseUrl + sound.path;
-
-      const loop = (options && typeof options.loop !== 'undefined') ? options.loop : sound.loop;
-      const gain = (options && typeof options.gain !== 'undefined') ? options.gain : (sound.gain || 1.0);
-
-      audio.loop = !!loop;
-      audio.volume = Math.max(0, Math.min(1, gain));
-
-      audio.play().catch(e => {
-        console.error('Error playing SFX:', id, e);
-      });
-
-      if (loop) {
-        this.playing.set(id, audio);
-      } else {
-        audio.addEventListener('ended', function() {
-          audio.remove();
-        });
-      }
-      return audio;
-    },
-
-    stopSfx: function(id) {
-      const audio = this.playing.get(id);
-      if (audio) {
-        audio.pause();
-        audio.src = '';
-        audio.remove();
-        this.playing.delete(id);
-      }
-    },
-
-    stopAll: function() {
-        this.playing.forEach((audio, id) => {
-            this.stopSfx(id);
-        });
-    }
-  };
-
-  global.GameAudio = GameAudio;
-
-})(window);
+  return { ctx, load, play, setVolume, resume };
+}

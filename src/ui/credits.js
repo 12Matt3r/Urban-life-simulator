@@ -1,63 +1,38 @@
-(function(global) {
-  'use strict';
+export function createCredits(root = document.body, config = {}) {
+  const overlay = document.createElement('div');
+  overlay.id = 'credits-overlay-container';
+  overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; display:none; align-items:center; justify-content:center; color:white; font-family:sans-serif;';
 
-  const CreditsScreen = {
-    config: null,
+  let creditsHtml = '<div style="text-align:center; max-width:600px;">';
+  creditsHtml += '<h1>' + (config.title || 'Credits') + '</h1>';
 
-    /**
-     * Initializes the CreditsScreen with configuration.
-     * @param {object} config - The credits configuration object.
-     */
-    init: function(config) {
-      this.config = config || {};
-      console.log('Credits Screen module initialized.');
-    },
+  (config.roll || []).forEach(function(credit) {
+    creditsHtml += '<p><strong style="color:#00ffa2;">' + credit.label + ':</strong> ' + credit.value + '</p>';
+  });
 
-    /**
-     * Shows the credits screen overlay.
-     */
-    show: function() {
-      if (!this.config || !this.config.roll) {
-        console.error('Credits config not loaded or is invalid.');
-        return;
-      }
+  if (config.postCreditsCue) {
+    creditsHtml += '<p style="margin-top: 30px; font-style:italic;">' + config.postCreditsCue + '</p>';
+  }
 
-      const overlay = document.createElement('div');
-      overlay.id = 'credits-overlay-container';
-      overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; display:flex; align-items:center; justify-content:center; color:white; font-family:sans-serif;';
+  creditsHtml += '<button id="close-credits-btn" style="margin-top:20px; padding:10px 20px; background:var(--acc); color:var(--bg); border:none; border-radius:8px; cursor:pointer;">Continue</button>';
+  creditsHtml += '</div>';
 
-      let creditsHtml = '<div style="text-align:center; max-width:600px;">';
-      creditsHtml += '<h1>' + (this.config.title || 'Credits') + '</h1>';
+  overlay.innerHTML = creditsHtml;
+  root.appendChild(overlay);
 
-      this.config.roll.forEach(function(credit) {
-        creditsHtml += '<p><strong style="color:#00ffa2;">' + credit.label + ':</strong> ' + credit.value + '</p>';
-      });
+  function show() {
+    overlay.style.display = 'flex';
+  }
 
-      if (this.config.postCreditsCue) {
-        creditsHtml += '<p style="margin-top: 30px; font-style:italic;">' + this.config.postCreditsCue + '</p>';
-      }
+  function hide() {
+    overlay.style.display = 'none';
+  }
 
-      creditsHtml += '<button id="close-credits-btn" style="margin-top:20px; padding:10px 20px; background:var(--acc); color:var(--bg); border:none; border-radius:8px; cursor:pointer;">Continue</button>';
-      creditsHtml += '</div>';
+  overlay.querySelector('#close-credits-btn').onclick = hide;
 
-      overlay.innerHTML = creditsHtml;
-      document.body.appendChild(overlay);
+  function destroy() {
+    overlay.remove();
+  }
 
-      document.getElementById('close-credits-btn').onclick = this.hide;
-    },
-
-    /**
-     * Hides the credits screen overlay.
-     */
-    hide: function() {
-      const overlay = document.getElementById('credits-overlay-container');
-      if (overlay) {
-        overlay.parentNode.removeChild(overlay);
-      }
-    }
-  };
-
-  global.UI = global.UI || {};
-  global.UI.CreditsScreen = CreditsScreen;
-
-})(window);
+  return { show, hide, destroy, el: overlay };
+}

@@ -1,41 +1,41 @@
 'use strict';
 
 /**
- * AssetManager
- * Manages access to game assets defined in the manifest.
+ * Creates an AssetManager instance.
+ * This is an async factory because it fetches the asset manifest upon creation.
+ * @param {string} manifestPath - The path to the assets.json manifest file.
+ * @returns {Promise<object>} A promise that resolves to the AssetManager instance.
  */
-export const AssetManager = {
-  manifest: null,
-  // The baseUrl is now empty because Vite will handle asset paths correctly.
-  // We will load assets directly. For external URLs, they will be absolute.
-  baseUrl: "",
+export async function createAssetManager(manifestPath) {
+  let manifest = null;
 
-  /**
-   * Initializes the AssetManager with the asset manifest.
-   * @param {object} manifest - The asset manifest object.
-   */
-  init: function(manifest) {
-    this.manifest = manifest;
-    if (this.manifest && this.manifest.version) {
-      console.log('AssetManager initialized with manifest version:', this.manifest.version);
-    } else {
-      console.error('AssetManager initialized with invalid or missing manifest.');
+  try {
+    const response = await fetch(manifestPath);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch asset manifest: ${response.statusText}`);
     }
-  },
+    manifest = await response.json();
+    console.log('AssetManager initialized with manifest version:', manifest.version);
+  } catch (error) {
+    console.error('AssetManager initialization failed:', error);
+    // Return a non-functional manager that logs errors on every get attempt.
+    return {
+      get: () => {
+        console.error('AssetManager failed to load manifest. Cannot get assets.');
+        return null;
+      },
+      getRawManifest: () => ({}),
+    };
+  }
 
   /**
    * Retrieves an asset path or object from the manifest using dot-notation.
    * @param {string} path - The dot-notation path to the asset (e.g., 'ui.hud.statsBars').
    * @returns {string|object|null} The path of the asset or null if not found.
    */
-  get: function(path) {
-    if (!this.manifest) {
-      console.error('Asset manifest not loaded.');
-      return null;
-    }
-
+  function get(path) {
     const parts = path.split('.');
-    let current = this.manifest;
+    let current = manifest;
 
     for (let i = 0; i < parts.length; i++) {
       if (current && typeof current === 'object' && current[parts[i]] !== undefined) {
@@ -46,14 +46,18 @@ export const AssetManager = {
       }
     }
 
-    // For file paths, Vite requires a relative path from the root.
-    // The `baseUrl` is no longer needed for local assets.
-    // If the path is external (http/https), it will be returned as is.
+    // Vite handles paths from the project root. The paths in assets.json are relative to 'src'.
+    // Prepending '/src/' is correct for Vite's dev server to find assets inside the src folder.
     if (typeof current === 'string' && !current.startsWith('http')) {
-      // Prepend src/ to make the path relative to the project root for Vite.
       return `/src/${current}`;
     }
 
     return current;
   }
-};
+
+  return {
+    get,
+    // Expose the raw manifest for systems that need to iterate over asset lists (e.g., radio stations).
+    getRawManifest: () => manifest,
+  };
+}

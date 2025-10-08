@@ -1,91 +1,63 @@
-(function(global) {
-  'use strict';
+// src/ui/hud.js
+export function createHUD(root = document.body, { eventBus, assetManager, initialStats }) {
+  const el = document.createElement('div');
+  el.id = 'hud';
 
-  const PlayerHUD = {
-    container: null,
-    assetManager: null,
-    eventBus: null,
-    stats: {},
+  const hudImageUrl = assetManager ? assetManager.get('ui.hud.statsBars') : '';
+  if (!hudImageUrl) {
+      console.warn('HUD background asset not found. Using fallback style.');
+  }
 
-    /**
-     * Initializes the Player HUD.
-     * @param {object} config - Configuration object.
-     * @param {HTMLElement} config.container - The container element for the HUD.
-     * @param {object} config.assetManager - The initialized AssetManager instance.
-     * @param {object} config.eventBus - The global event bus.
-     */
-    init: function(config) {
-      this.container = config.container;
-      this.assetManager = config.assetManager;
-      this.eventBus = config.eventBus;
+  el.style.cssText = `
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    width: 250px;
+    height: 150px;
+    background-image: url('${hudImageUrl}');
+    background-size: contain;
+    background-repeat: no-repeat;
+    z-index: 100;
+    color: white;
+    font-family: monospace;
+  `;
 
-      if (!this.container || !this.assetManager || !this.eventBus) {
-        console.error('PlayerHUD init failed: Missing required configuration.');
-        return;
-      }
+  // Container for the stat text, with padding to align it inside the graphic
+  const statsContainer = document.createElement('div');
+  statsContainer.style.cssText = 'padding: 20px 0 0 15px; display: flex; flex-direction: column; gap: 8px;';
 
-      this.eventBus.subscribe('stats:updated', this.update.bind(this));
-      this.render();
-      console.log('PlayerHUD initialized.');
-    },
+  root.appendChild(el);
+  el.appendChild(statsContainer);
 
-    /**
-     * Renders the initial structure of the HUD.
-     */
-    render: function() {
-      const hudImageUrl = this.assetManager.get('ui.hud.statsBars');
-      if (!hudImageUrl) {
-        console.error('HUD background asset not found.');
-        this.container.style.border = "1px solid red"; // Fallback visibility
-        this.container.innerHTML = "<p style='color:red'>HUD asset missing</p>";
-        return;
-      }
+  const healthEl = document.createElement('div');
+  const sanityEl = document.createElement('div');
+  const moneyEl = document.createElement('div');
+  const heatEl = document.createElement('div');
 
-      this.container.style.cssText = `
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        width: 250px;
-        height: 150px;
-        background-image: url('${hudImageUrl}');
-        background-size: contain;
-        background-repeat: no-repeat;
-        z-index: 200;
-        color: white;
-        font-family: sans-serif;
-        padding: 10px;
-      `;
+  statsContainer.appendChild(healthEl);
+  statsContainer.appendChild(sanityEl);
+  statsContainer.appendChild(moneyEl);
+  statsContainer.appendChild(heatEl);
 
-      this.container.innerHTML = `
-        <div id="hud-stats-container" style="margin-top: 20px; display: flex; flex-direction: column; gap: 8px; padding-left: 15px;">
-            <div id="hud-health">Health: --</div>
-            <div id="hud-sanity">Sanity: --</div>
-            <div id="hud-money">Money: $--</div>
-            <div id="hud-heat">Heat: --</div>
-        </div>
-      `;
-    },
+  function update(stats) {
+    if (!stats) return;
+    healthEl.textContent = `Health: ${stats.health}%`;
+    sanityEl.textContent = `Sanity: ${stats.sanity}%`;
+    moneyEl.textContent = `Money: $${stats.money}`;
+    heatEl.textContent = `Heat: ${'★'.repeat(stats.heat || 0)}${'☆'.repeat(5 - (stats.heat || 0))}`;
+  }
 
-    /**
-     * Updates the HUD with new stats.
-     * @param {object} newStats - The new player stats object.
-     */
-    update: function(newStats) {
-      this.stats = newStats;
+  if (eventBus) {
+    eventBus.subscribe('stats:updated', update);
+  }
 
-      const healthEl = document.getElementById('hud-health');
-      const sanityEl = document.getElementById('hud-sanity');
-      const moneyEl = document.getElementById('hud-money');
-      const heatEl = document.getElementById('hud-heat');
+  // Set initial state
+  update(initialStats);
 
-      if (healthEl) healthEl.textContent = `Health: ${this.stats.health}%`;
-      if (sanityEl) sanityEl.textContent = `Sanity: ${this.stats.sanity}%`;
-      if (moneyEl) moneyEl.textContent = `Money: $${this.stats.money}`;
-      if (heatEl) heatEl.textContent = `Heat: ${'★'.repeat(this.stats.heat)}${'☆'.repeat(5 - this.stats.heat)}`;
-    }
-  };
+  function destroy() {
+    // In a more complex app, we'd unsubscribe from the eventBus here.
+    el.remove();
+  }
 
-  global.UI = global.UI || {};
-  global.UI.PlayerHUD = PlayerHUD;
-
-})(window);
+  return { el, destroy, update };
+}
