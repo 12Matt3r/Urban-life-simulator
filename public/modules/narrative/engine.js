@@ -1,4 +1,4 @@
-// Mock Narrative Engine v1.0 — minimal postMessage protocol
+// Mock Narrative Engine v1.0 — robust handshake
 const VERSION = '1.0';
 const TRACE = new URLSearchParams(location.search).get('trace') === '1';
 const log = (...a) => TRACE && console.log('[NarrativeMock]', ...a);
@@ -6,15 +6,13 @@ const log = (...a) => TRACE && console.log('[NarrativeMock]', ...a);
 let session = {};
 let busy = false;
 
-// Utility: reply
 function send(type, data = {}, requestId) {
   const msg = { version: VERSION, type, data };
   if (requestId) msg.requestId = requestId;
   log('→', msg);
-  window.parent.postMessage(msg, '*'); // for mock/testing only; pin origin in prod.
+  window.parent.postMessage(msg, '*');
 }
 
-// Handle messages from host app
 function onMessage(ev) {
   const msg = ev.data;
   if (!msg || msg.version !== VERSION || !msg.type) return;
@@ -23,11 +21,9 @@ function onMessage(ev) {
   switch (msg.type) {
     case 'ENGINE_INIT': {
       session = msg.data || {};
-      // This is the fix: only send ENGINE_READY after the host has initialized us.
       send('ENGINE_READY', { mock: true }, msg.requestId);
       break;
     }
-
     case 'START_SEQUENCE': {
       if (busy) {
         send('SEQUENCE_ERROR', { code: 'BUSY', message: 'Engine busy' }, msg.requestId);
@@ -36,7 +32,6 @@ function onMessage(ev) {
       busy = true;
       const { sequenceId = 'unknown', params = {} } = msg.data || {};
       send('SEQUENCE_STARTED', { sequenceId, params }, msg.requestId);
-
       const durationMs = params?.__testDurationMs ?? 300;
       setTimeout(() => {
         busy = false;
@@ -45,16 +40,9 @@ function onMessage(ev) {
       }, durationMs);
       break;
     }
-
-    case 'PING': {
-      send('PONG', { t: Date.now() }, msg.requestId);
-      break;
-    }
-
-    default: {
-      send('SEQUENCE_ERROR', { code: 'UNKNOWN_MSG', message: `Unhandled type ${msg.type}` }, msg.requestId);
-    }
   }
 }
 
+// 1. Announce that the client (iframe) is loaded and ready for initialization.
+send('CLIENT_READY');
 window.addEventListener('message', onMessage);

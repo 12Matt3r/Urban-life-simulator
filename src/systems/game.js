@@ -8,16 +8,18 @@
  * @param {object} deps.narrative - The narrative system.
  * @returns {object} The public API of the GameManager.
  */
-export function createGameManager({ bus, sceneManager, narrative }) {
+export function createGameManager({ bus, sceneManager, narrative, initialPlayerState = {} }) {
   const player = {
     name: "Player",
+    role: "Unknown",
     health: 100,
     sanity: 100,
     money: 50,
     heat: 0,
     clout: 0,
     reputation: 0,
-    inventory: []
+    inventory: [],
+    ...initialPlayerState,
   };
 
   const time = {
@@ -28,6 +30,7 @@ export function createGameManager({ bus, sceneManager, narrative }) {
   };
 
   let unsubscribes = [];
+  let consequenceCheckTimer = 5; // Check for consequences every 5 seconds
 
   function getStat(stat) {
     return player.hasOwnProperty(stat) ? player[stat] : null;
@@ -87,6 +90,24 @@ export function createGameManager({ bus, sceneManager, narrative }) {
 
   function tick(dt) {
     sceneManager.update(dt);
+
+    // Consequence System Logic
+    if (player.heat > 0) {
+      consequenceCheckTimer -= dt;
+      if (consequenceCheckTimer <= 0) {
+        consequenceCheckTimer = 5; // Reset timer
+        const heatChance = (player.heat / 5) * 0.5; // Max 50% chance at 5 heat
+        if (Math.random() < heatChance) {
+          console.log(`[CONSEQUENCE] Your high heat level has attracted unwanted attention!`);
+          bus.emit('game:consequence', { heat: player.heat });
+        }
+      }
+    }
+  }
+
+  function commitIllicitAct(amount = 1) {
+    console.log(`Committing illicit act, increasing heat by ${amount}`);
+    modifyStat('heat', amount);
   }
 
   return {
@@ -97,6 +118,7 @@ export function createGameManager({ bus, sceneManager, narrative }) {
     modifyStat,
     addItem,
     advanceTime,
+    commitIllicitAct,
     getPlayerState: () => ({ ...player }),
   };
 }

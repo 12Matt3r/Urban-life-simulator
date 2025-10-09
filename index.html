@@ -1,49 +1,665 @@
 <!doctype html>
-<html lang="en">
+<html>
 <head>
 <meta charset="utf-8" />
-<title>Urban Life Simulator - Integrated Client</title>
+<title>Urban Life Simulator — Chroma City</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
-  :root {
-    --bg: #0b0b0d; --panel: #111216; --ink: #e9f1ff; --muted: #98a2b3;
-    --acc: #00ffa2; --danger: #ff6b6b; --line: #1c1f26;
-  }
-  html, body { height: 100%; background: var(--bg); color: var(--ink); margin: 0; font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
-  .wrap { padding: 24px; max-width: 980px; margin: 0 auto; }
-  h1 { font-size: 20px; margin: 0 0 8px; }
-  p { color: var(--muted); margin: 0 0 12px; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
-  #game-container { position: relative; width: 100%; height: 480px; background-color: #000; border-radius: 12px; margin-top: 24px; overflow: hidden; border: 1px solid var(--line); }
-  #hud-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-  #overlay-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-  .uls-dev-btn { background:#1f2633; border:1px solid #2b3344; color:#dfe5f2; border-radius:5px; padding:6px 8px; cursor:pointer; font-size: 11px; }
-  .uls-dev-btn:hover { background:#242d3e; }
+  html,body{height:100%;margin:0;background:#000;color:#e8e8e8;font:14px/1.35 system-ui,Segoe UI,Roboto,Helvetica,Arial}
+  #stage{position:fixed;inset:0;display:grid;place-items:center;background:#000}
+  #stage .img{max-width:100vw;max-height:100vh;display:block}
+  #promptBar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);width:min(860px,92vw);display:flex;gap:8px;z-index:9998}
+  #promptBar input{flex:1;background:#111;border:1px solid #333;border-radius:10px;padding:12px 14px;color:#fff}
+  #promptBar button{background:#1f6feb;border:0;border-radius:10px;color:#fff;padding:12px 14px;cursor:pointer}
+  /* HUD */
+  #hud{position:fixed;left:12px;bottom:12px;z-index:9999;background:rgba(0,0,0,.55);color:#fff;padding:10px 12px;border-radius:10px;font:14px system-ui}
+  #hud .row{display:flex;gap:8px;align-items:center;margin:3px 0}
+  #hud .bar{width:120px;height:6px;background:#222;border-radius:6px;overflow:hidden}
+  #hud .bar>i{display:block;height:100%}
+  #hud .bar.health>i{background:#e74c3c}
+  #hud .bar.sanity>i{background:#3498db}
+  #hud .bar.money>i{background:#2ecc71}
+  #hud .bar.fame>i{background:#9b59b6}
+  #hud .bar.heat>i{background:#f1c40f}
+  #toasts{position:fixed;right:12px;top:12px;z-index:9999}
+  .toast{background:rgba(0,0,0,.7);color:#fff;padding:8px 10px;margin:6px;border-radius:8px}
+  /* Radio box */
+  #radio{position:fixed;left:12px;top:12px;background:rgba(0,0,0,.55);color:#fff;padding:8px;border-radius:8px;z-index:9998}
+  /* TrippyCam */
+  .trippy { filter: hue-rotate(45deg) saturate(1.3) blur(1px); animation: wob 2s infinite alternate ease-in-out; }
+  @keyframes wob { from{ transform:scale(1.0) } to{ transform:scale(1.02) } }
+  /* Menu */
+  #menu{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#111;color:#fff;padding:16px;border-radius:12px;z-index:99999;min-width:320px}
+  #menu button{display:block;width:100%;margin:6px 0;padding:10px;border-radius:10px;border:0;background:#222;color:#fff}
+  /* Character Create */
+  #char{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#111;color:#fff;padding:16px;border-radius:12px;z-index:99999}
+  #char input{display:block;width:280px;margin:6px 0;padding:10px;border-radius:8px;border:1px solid #333;background:#0c0c0c;color:#fff}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Urban Life Simulator</h1>
-    <div class="card">
-      <p>The integrated game client is loading. If you have the `dev=1` flag in the URL, the test harness will appear below.</p>
-    </div>
-    <div id="game-container">
-      <div id="hud-container"></div>
-      <div id="overlay-container"></div>
-    </div>
-    <div id="radio-container" style="margin-top: 24px;"></div>
-  </div>
 
-  <!-- Narrative Engine Iframe (keep hidden) -->
-  <iframe
-    id="narrative-engine-iframe"
-    src="/modules/narrative/index.html"
-    title="Narrative Engine"
-    style="position:absolute;left:-99999px;top:-99999px;width:1px;height:1px;border:0;"
-    sandbox="allow-scripts allow-same-origin"
-  ></iframe>
+<!-- ====== CONFIG ====== -->
+<script>
+  window.ULS_CONFIG = {
+    // Narrators (WebSim)
+    NARRATOR_PG13_URL  : 'https://websim.com/@SOFAKINGSADBOI/uls-narrator-api-pg-13',
+    NARRATOR_ADULT_URL : 'https://websim.com/@SOFAKINGSADBOI/uls-narrator-adult-mode',
+    // Autopilot narrator (optional; can be same as PG-13)
+    NARRATOR_AUTOPILOT_URL: 'https://websim.com/@SOFAKINGSADBOI/narrator-api',
 
-  <!-- Single entrypoint -->
-  <script type="module" src="/src/main.js"></script>
+    // Image Generator (WebSim)
+    IMAGE_RENDER_URL: 'https://websim.com/@DominoDaddy/free-image-generator',
+
+    // Jobs (WebSim)
+    DND_URL: 'https://websim.com/@SOFAKINGSADBOI/ultimate-nerd-championships',
+
+    // Monkey Paw (WebSim)
+    MONKEYPAW_URL: 'https://websim.com/@SOFAKINGSADBOI/the-monkey-s-paw',
+
+    // Credits
+    CREDITS_URL: 'https://youtu.be/YwwefX7-0r0?si=WEKnX1iLRQJcNLaZ',
+
+    // Radio stations (populate with your File Garden arrays)
+    RADIO_STATIONS: [
+      { name: 'Cozy FM (Lofi)', tracks: ['https://file.garden/aNQEj1MKyWDQ8eyI/lofi/Nostalgic%20Currents.mp3'] },
+      { name: 'Viva La Disco (Latin)', tracks: ['https://file.garden/aNQEj1MKyWDQ8eyI/latin/Soltar.mp3'] },
+      { name: 'Bassface FM (Dubstep)', tracks: ['https://file.garden/aNQEj1MKyWDQ8eyI/dubstep/collard%20greens%20with%20a%20side%20of%20brain%20rott.wav'] },
+      { name: 'Hip Hop on the Block', tracks: ['https://file.garden/aNQEj1MKyWDQ8eyI/hiphop/Noemotion%20funk%202.mp3'] },
+      { name: 'BackFORTYdrip (Country)', tracks: ['https://file.garden/aNQEj1MKyWDQ8eyI/country/Back%20road%20confessions.mp3'] },
+      { name: 'Mosh Pit FM (Metal)', tracks: ['https://file.garden/aNQEj1MKyWDQ8eyI/metal/Whats%20in%20the%20Bowl%20Bitch.mp3'] },
+      { name: 'Notebook FM (Talk)', tracks: ['https://file.garden/aNQEj1MKyWDQ8eyI/Talk%20radio/Exit%20valley%20episode.mp3'] }
+    ],
+
+    // SFX (optional): add File Garden URLs if you want sounds
+    SFX_DING  : '', // e.g. 'https://file.garden/.../ding.mp3'
+    SFX_BUZZ  : ''  // e.g. 'https://file.garden/.../buzz.mp3'
+  };
+</script>
+
+<!-- ====== STAGE ====== -->
+<div id="stage"><img class="img" id="stage-img" alt="" /></div>
+
+<!-- ====== INPUT BAR ====== -->
+<div id="promptBar">
+  <input id="playerInput" placeholder="Type your action… (enter to submit)" />
+  <button id="submitBtn">Send</button>
+</div>
+
+<!-- ====== HUD / TOASTS / RADIO ====== -->
+<div id="hud">
+  <div class="row">Health <span class="bar health"><i style="width:100%"></i></span></div>
+  <div class="row">Sanity <span class="bar sanity"><i style="width:100%"></i></span></div>
+  <div class="row">Money  <span class="bar money"><i style="width:0%"></i></span></div>
+  <div class="row">Fame   <span class="bar fame"><i style="width:0%"></i></span></div>
+  <div class="row">Heat   <span class="bar heat"><i style="width:0%"></i></span></div>
+</div>
+<div id="toasts"></div>
+
+<div id="radio">
+  <select id="station"></select>
+  <button id="rPrev">⏮</button>
+  <button id="rToggle">⏯</button>
+  <button id="rNext">⏭</button>
+  <label><input type="checkbox" id="rShuffle"> shuffle</label>
+</div>
+<audio id="radio-audio" crossorigin="anonymous"></audio>
+<audio id="sfx-ding" src=""></audio>
+<audio id="sfx-buzz" src=""></audio>
+
+<!-- ====== CORE BUS / APP ====== -->
+<script>
+  // Tiny event bus
+  window.eventBus = (function(){
+    const subs = {};
+    return {
+      publish: (topic, payload) => (subs[topic]||[]).forEach(fn=>fn(payload)),
+      subscribe:(topic, fn)=>((subs[topic]=subs[topic]||[]).push(fn))
+    };
+  })();
+
+  // App state
+  window.__app = {
+    history: [],
+    stats: { health:100, sanity:100, money:0, fame:0, heat:0 },
+    player: { name:'', role:'', adult:false },
+    realm: 'uls',
+    router: {
+      routes: {},
+      register(id, api){ __app.router.routes[id]=api; },
+      go(id, params){ __app.realm=id; eventBus.publish('realm.changed',{realm:id, params}); __app.router.routes[id]?.enter?.(params||{}); }
+    },
+    gameManager: {
+      getLastEvent(){ return __app.history[__app.history.length-1]||null; },
+      commitTurn(ev){ __app.history.push(ev); eventBus.publish('turn.commit', ev); }
+    }
+  };
+</script>
+
+<!-- ====== HUD / TOASTS ====== -->
+<script>
+(function(){
+  function setBar(cls, v){ v=Math.max(0,Math.min(100,v)); document.querySelector('.bar.'+cls+' > i').style.width=v+'%';}
+  function setHUD(stats){
+    setBar('health', stats.health);
+    setBar('sanity', stats.sanity);
+    setBar('money',  Math.min(100, Math.floor(stats.money/10)));
+    setBar('fame',   Math.min(100, stats.fame));
+    setBar('heat',   Math.min(100, stats.heat*20)); // 0..5 → 0..100
+  }
+  eventBus.subscribe('stats.update', p=>{ Object.assign(__app.stats, p||{}); setHUD(__app.stats); });
+  eventBus.subscribe('hud.toast', p=>{
+    const d=document.createElement('div'); d.className='toast'; d.textContent=p.text||'';
+    document.getElementById('toasts').appendChild(d); setTimeout(()=>d.remove(), 3000);
+  });
+  setHUD(__app.stats);
+})();
+</script>
+
+<!-- ====== RADIO ====== -->
+<script>
+(function(){
+  const A=document.getElementById('radio-audio');
+  const dingEl=document.getElementById('sfx-ding');
+  const buzzEl=document.getElementById('sfx-buzz');
+  // load SFX if provided
+  if(ULS_CONFIG.SFX_DING) dingEl.src=ULS_CONFIG.SFX_DING;
+  if(ULS_CONFIG.SFX_BUZZ) buzzEl.src=ULS_CONFIG.SFX_BUZZ;
+  window.playDing = ()=>{ if(dingEl.src) dingEl.play(); };
+  window.playBuzz = ()=>{ if(buzzEl.src) buzzEl.play(); };
+
+  const stations = ULS_CONFIG.RADIO_STATIONS||[];
+  let curS=0, curT=0, shuffle=false;
+  const sel=document.getElementById('station');
+  stations.forEach((s,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=s.name; sel.appendChild(o); });
+  function setStation(i){ curS=i; curT=0; play(); eventBus.publish('radio.changed',{station:stations[curS]?.name}); }
+  function setShuffle(v){ shuffle=!!v; }
+  function next(){ if(!stations[curS]) return; if(shuffle) curT=Math.floor(Math.random()*stations[curS].tracks.length); else curT=(curT+1)%stations[curS].tracks.length; play(); }
+  function prev(){ if(!stations[curS]) return; curT=(curT-1+stations[curS].tracks.length)%stations[curS].tracks.length; play(); }
+  function play(){ const s=stations[curS]; if(!s||!s.tracks.length) return; const url=s.tracks[curT]; A.src=url; A.play(); }
+  function toggle(){ if(A.paused) A.play(); else A.pause(); }
+  sel.onchange=()=>setStation(+sel.value);
+  document.getElementById('rShuffle').onchange=(e)=>setShuffle(e.target.checked);
+  document.getElementById('rPrev').onclick=prev;
+  document.getElementById('rNext').onclick=next;
+  document.getElementById('rToggle').onclick=toggle;
+  if(stations.length) setStation(0);
+  window.Radio={ next, prev, toggle, setShuffle };
+})();
+</script>
+
+<!-- ====== IMAGE RENDER BRIDGE (WebSim) ====== -->
+<script>
+(function(){
+  let iframe=null;
+  function ensure(){
+    if(iframe) return;
+    iframe=document.createElement('iframe'); iframe.src=ULS_CONFIG.IMAGE_RENDER_URL; iframe.style.display='none'; document.body.appendChild(iframe);
+    window.addEventListener('message', onMsg);
+  }
+  function onMsg(e){
+    if(!e.data||!e.data.image) return;
+    const img = document.getElementById('stage-img');
+    if(e.data.image?.dataUrl){ img.src = e.data.image.dataUrl; }
+    if(e.data.image?.url){ img.src = e.data.image.url; }
+  }
+  eventBus.subscribe('image.request', p=>{
+    ensure();
+    const payload = { prompt:p.prompt, style:p.style||'cinematic neon city' };
+    iframe.contentWindow.postMessage({ from:'uls', type:'image.request', payload }, '*');
+  });
+})();
+</script>
+
+<!-- ====== NARRATOR BRIDGE (PG-13/ADULT) & AUTOPILOT ====== -->
+<script>
+(function(){
+  let iframe=null, ready=false, waitQ=[];
+  function ensure(url){
+    if(iframe){ if(iframe.src!==url) iframe.src=url; return; }
+    iframe=document.createElement('iframe'); iframe.style.display='none'; iframe.src=url; document.body.appendChild(iframe);
+    window.addEventListener('message', onMsg);
+  }
+  function onMsg(e){
+    const d=e.data;
+    if(!d||!d.narrator) return;
+    if(d.type==='ready'){ ready=true; waitQ.forEach(f=>f()); waitQ.length=0; }
+    if(d.type==='response'){ eventBus.publish('narrator.response', d.payload); }
+    if(d.type==='autopilot.suggestion'){ eventBus.publish('narrator.autopilot.suggestion', d.payload); }
+    if(d.type==='coin.result'){ eventBus.publish('coin.result', d.payload); }
+  }
+  function send(payload){
+    if(!iframe) return;
+    iframe.contentWindow.postMessage({ from:'uls', payload }, '*');
+  }
+  eventBus.subscribe('narrator.ask', payload=>{
+    const url = __app.player.adult ? ULS_CONFIG.NARRATOR_ADULT_URL : ULS_CONFIG.NARRATOR_PG13_URL;
+    ensure(url);
+    const go=()=>send({type:'ask', data:payload});
+    if(!ready) waitQ.push(go); else go();
+  });
+  // autopilot suggestions
+  eventBus.subscribe('narrator.autopilot.suggestAction', payload=>{
+    const url = ULS_CONFIG.NARRATOR_AUTOPILOT_URL || ( __app.player.adult ? ULS_CONFIG.NARRATOR_ADULT_URL : ULS_CONFIG.NARRATOR_PG13_URL );
+    ensure(url);
+    const go=()=>send({type:'autopilot.suggest', data:payload});
+    if(!ready) waitQ.push(go); else go();
+  });
+  // proxy coin flips to narrator if desired
+  eventBus.subscribe('coin.flip', payload=>{
+    const url = __app.player.adult ? ULS_CONFIG.NARRATOR_ADULT_URL : ULS_CONFIG.NARRATOR_PG13_URL;
+    ensure(url);
+    const go=()=>send({type:'coin.flip', data:payload});
+    if(!ready) waitQ.push(go); else go();
+  });
+})();
+</script>
+
+<!-- ====== COIN ENGINE + DOUBLE OR NOTHING + SFX ====== -->
+<script>
+(function(){
+  const DNU = { count:0, locked:false, season:1 };
+  function flipOnce(diff){ const p = diff==='easy'?0.65 : diff==='hard'?0.35 : 0.5; return Math.random()<p; }
+  function resolve(payload){
+    const diff = payload?.difficulty || 'even';
+    const success = flipOnce(diff);
+    const dmg = success? 0 : (payload?.failDamage || 10);
+    const reward = success? (payload?.reward||10) : 0;
+    if(success) playDing(); else playBuzz();
+    if(reward) eventBus.publish('stats.update',{ money: __app.stats.money + reward });
+    if(dmg) eventBus.publish('stats.update',{ health: Math.max(0,__app.stats.health - dmg) });
+    eventBus.publish('coin.result',{ success, diff, dmg, reward });
+  }
+  eventBus.subscribe('coin.flip', resolve);
+
+  // DoN policy: after you invoke DoN once, you may chain one more (then lock until season advance)
+  eventBus.subscribe('coin.doubleOrNothing', ()=>{
+    if(DNU.locked){ eventBus.publish('hud.toast',{text:'Double-or-Nothing unavailable (limit reached).'}); return; }
+    if(DNU.count===0){ DNU.count=1; eventBus.publish('hud.toast',{text:'Double-or-Nothing ready. Risk it? Flip again!'}); return; }
+    if(DNU.count===1){ DNU.count=2; DNU.locked=true; eventBus.publish('hud.toast',{text:'Last Double-or-Nothing allowed this season!'}); return; }
+  });
+  eventBus.subscribe('season.advance', ()=>{ DNU.count=0; DNU.locked=false; DNU.season+=1; });
+})();
+</script>
+
+<!-- ====== SAVE / TRANSCRIPT ====== -->
+<script>
+(function(){
+  const LS_RUN='uls.currentRun', LS_SLOTS='uls.saveSlots';
+  const Save = {
+    cur:null, init(){ this.cur=JSON.parse(localStorage.getItem(LS_RUN)||'null')||this.new(); this.flush(); },
+    new(){ return {runId:Date.now()+'-'+Math.random().toString(36).slice(2), player:{}, stats:{}, realm:'uls', log:[]}; },
+    logTurn(entry){ this.cur.log.push(entry); this.flush(); },
+    setPlayer(p){ Object.assign(this.cur.player,p); this.flush(); },
+    setStats(s){ Object.assign(this.cur.stats,s); this.flush(); },
+    setRealm(r){ this.cur.realm=r; this.flush(); },
+    flush(){ localStorage.setItem(LS_RUN, JSON.stringify(this.cur)); },
+    export(){ const b=new Blob([JSON.stringify(this.cur,null,2)],{type:'application/json'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download='uls_'+this.cur.runId+'.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),500); },
+    import(obj){ if(!obj?.log) return false; this.cur=obj; this.flush(); return true; },
+    saveSlot(i,title){ const slots=JSON.parse(localStorage.getItem(LS_SLOTS)||'[]'); while(slots.length<3) slots.push(null); slots[i]={title:title||('Save '+(i+1)), ts:Date.now(), snapshot:this.cur}; localStorage.setItem(LS_SLOTS, JSON.stringify(slots)); },
+    loadSlot(i){ const s=JSON.parse(localStorage.getItem(LS_SLOTS)||'[]')[i]; if(!s) return false; this.cur=s.snapshot; this.flush(); return true; }
+  };
+  Save.init();
+  window.Save=Save;
+
+  eventBus.subscribe('turn.commit', e=>Save.logTurn(e));
+  eventBus.subscribe('character.created', p=>{ Save.setPlayer(p.player); Save.setStats(p.stats); });
+  eventBus.subscribe('stats.update', s=>Save.setStats(__app.stats));
+  eventBus.subscribe('realm.changed', p=>Save.setRealm(p.realm));
+
+  // quick buttons
+  const bar=document.createElement('div'); bar.style.cssText='position:fixed;right:12px;bottom:60px;background:rgba(0,0,0,.5);color:#fff;padding:6px;border-radius:8px;z-index:9999';
+  bar.innerHTML=`<button onclick="Save.export()">Export</button>
+  <button onclick="Save.saveSlot(0,'Slot 1')">Save1</button><button onclick="Save.loadSlot(0)">Load1</button>
+  <button onclick="Save.saveSlot(1,'Slot 2')">Save2</button><button onclick="Save.loadSlot(1)">Load2</button>`;
+  document.body.appendChild(bar);
+})();
+</script>
+
+<!-- ====== TRIPPYCAM ====== -->
+<script>
+(function(){
+  let on=false, root=document.documentElement;
+  eventBus.subscribe('fx.trippy.on',()=>{ if(on) return; on=true; root.classList.add('trippy'); });
+  eventBus.subscribe('fx.trippy.off',()=>{ on=false; root.classList.remove('trippy'); });
+  eventBus.subscribe('drink.alcohol',()=>eventBus.publish('fx.trippy.on'));
+  eventBus.subscribe('rest.sober',()=>eventBus.publish('fx.trippy.off'));
+})();
+</script>
+
+<!-- ====== CYCLE (DAY/NIGHT/WEATHER) ====== -->
+<script>
+(function(){
+  const cycle={ time:'night', weather:'clear' };
+  function apply(){
+    const prompt=(cycle.time==='night'?'nighttime ':'daytime ') + (cycle.weather==='rain'?'rainy ':'clear ') + 'Tokyo x New York neon streets, rain-slick reflections';
+    eventBus.publish('image.request',{prompt});
+  }
+  eventBus.subscribe('cycle.set',p=>{ Object.assign(cycle,p); apply(); });
+  apply();
+})();
+</script>
+
+<!-- ====== HEAT / WANTED ====== -->
+<script>
+(function(){
+  eventBus.subscribe('heat.add',p=>{
+    const v = Math.min(5, __app.stats.heat + (p?.amount||1));
+    eventBus.publish('stats.update',{heat:v});
+    if(v>=3) eventBus.publish('hud.toast',{text:'Cops are watching…'});
+  });
+  eventBus.subscribe('heat.clear',()=>eventBus.publish('stats.update',{heat:0}));
+})();
+</script>
+
+<!-- ====== CONSEQUENCE SYSTEM ====== -->
+<script>
+(function(){
+  const TICK_INTERVAL = 5000; // 5 seconds
+
+  function gameTick() {
+    if (__app.stats.heat > 0) {
+      // The chance of a consequence is (heat / 10).
+      // At heat 1, it's 10%. At max heat 5, it's 50%.
+      const chance = __app.stats.heat / 10;
+      if (Math.random() < chance) {
+        const moneyLost = 50;
+        eventBus.publish('hud.toast', { text: `Police shakedown! You lost $${moneyLost}.` });
+        eventBus.publish('stats.update', {
+          money: Math.max(0, __app.stats.money - moneyLost),
+          heat: Math.max(0, __app.stats.heat - 1)
+        });
+      }
+    }
+  }
+
+  setInterval(gameTick, TICK_INTERVAL);
+  console.log('Consequence System initialized with a 5-second tick.');
+})();
+</script>
+
+<!-- ====== ECONOMY ====== -->
+<script>
+(function(){
+  window.Shop={ buy(name, cost){ if(__app.stats.money<cost) return eventBus.publish('hud.toast',{text:'Not enough money.'});
+    eventBus.publish('stats.update',{money:__app.stats.money-cost}); eventBus.publish('hud.toast',{text:'Bought '+name}); } };
+})();
+</script>
+
+<!-- ====== DND JOB (iframe) ====== -->
+<script>
+(function(){
+  eventBus.subscribe('job.dnd.start', ()=>{
+    const w=document.createElement('div'); w.id='dnd-host'; w.style.cssText='position:fixed;inset:5%;background:#000;z-index:99999';
+    w.innerHTML='<iframe src="'+ULS_CONFIG.DND_URL+'" style="width:100%;height:100%;border:0"></iframe><button style="position:absolute;right:8px;top:8px" onclick="document.getElementById(\'dnd-host\').remove()">Exit</button>';
+    document.body.appendChild(w);
+  });
+  window.addEventListener('message', e=>{
+    if(e.data && e.data.type==='dnd.win'){
+      eventBus.publish('stats.update',{money:__app.stats.money+150});
+      eventBus.publish('hud.toast',{text:'DND Tournament Won! +$150'});
+    }
+  });
+})();
+</script>
+
+<!-- ====== MONKEY PAW (item + iframe grants) ====== -->
+<script>
+(function(){
+  const Paw={ wishes:5, active:false, iframe:null };
+  function openPaw(){
+    if(!Paw.iframe){
+      const w=document.createElement('div'); w.id='paw-host'; w.style.cssText='position:fixed;inset:10%;background:#000;z-index:99999';
+      w.innerHTML='<iframe id="paw-iframe" src="'+ULS_CONFIG.MONKEYPAW_URL+'" style="width:100%;height:100%;border:0"></iframe><button style="position:absolute;right:10px;top:10px" onclick="document.getElementById(\'paw-host\').remove();">Close</button>';
+      document.body.appendChild(w);
+      Paw.iframe = document.getElementById('paw-iframe');
+      window.addEventListener('message', onMsg);
+    }
+  }
+  function onMsg(e){
+    const d=e.data;
+    if(!d||!d.type) return;
+    if(d.type==='monkeypaw.ready'){ Paw.active=true; eventBus.publish('hud.toast',{text:'Monkey Paw is listening… (wishes left: '+Paw.wishes+')'}); }
+    if(d.type==='monkeypaw.grant' && Paw.wishes>0){
+      Paw.wishes--;
+      // typical payload: { type:'money', amount:100 } OR { type:'fame', amount:5 } etc.
+      const g=d.payload||{};
+      if(g.type==='money') eventBus.publish('stats.update',{money:__app.stats.money+(g.amount||100)});
+      if(g.type==='fame')  eventBus.publish('stats.update',{fame:Math.min(100,__app.stats.fame+(g.amount||3))});
+      if(g.type==='health')eventBus.publish('stats.update',{health:Math.min(100,__app.stats.health+(g.amount||10))});
+      // inevitable curse:
+      setTimeout(()=>{ eventBus.publish('hud.toast',{text:'The Paw takes its price…'}); eventBus.publish('stats.update',{sanity:Math.max(0,__app.stats.sanity-15)}); }, 800);
+      eventBus.publish('hud.toast',{text:'Wish granted. ('+Paw.wishes+' left)'});
+    }
+  }
+
+  eventBus.subscribe('monkeypaw.pickup', ()=>{
+    Paw.active=true;
+    eventBus.publish('hud.toast',{text:'You found the Monkey Paw (5 wishes). Type: wish money 500 / wish fame 5 / etc.'});
+  });
+  eventBus.subscribe('monkeypaw.open', openPaw);
+  window.MonkeyPaw={ open:openPaw };
+})();
+</script>
+
+<!-- ====== LIVING HELL ====== -->
+<script>
+(function(){
+  const LH = {
+    enter(){
+      __app.realm='living-hell';
+      eventBus.publish('image.request',{prompt:'reality show house interior, fishtank glass walls, cameras, dramatic lighting'});
+      __app.gameManager.commitTurn({
+        realm:'living-hell',
+        text:"You're live. Keep the crowd happy. What's your move?",
+        decisions:[{text:'truth or dare'},{text:'perform a stunt'},{text:'confess a secret'},{text:'prank someone'}],
+        hype:true
+      });
+    }
+  };
+  eventBus.subscribe('applyDecision', a=>{
+    if(__app.realm!=='living-hell') return;
+    eventBus.publish('narrator.ask',{ realm:'living-hell', mode:'audience', prompt:a.text, history:__app.history });
+  });
+  __app.router.register('living-hell', LH);
+})();
+</script>
+
+<!-- ====== DREAMWORLD ====== -->
+<script>
+(function(){
+  const DW = {
+    enter(){
+      __app.realm='dreamworld';
+      eventBus.publish('image.request',{prompt:'surreal floating islands over a sleeping city, cosmic sky, vapor haze'});
+      __app.gameManager.commitTurn({
+        realm:'dreamworld',
+        text:'Symbols whisper. Choose a path.',
+        decisions:[{text:'door of memory'},{text:'bridge of fear'},{text:'lake of reflection'}]
+      });
+    }
+  };
+  eventBus.subscribe('applyDecision', a=>{
+    if(__app.realm!=='dreamworld') return;
+    eventBus.publish('narrator.ask',{ realm:'dreamworld', prompt:a.text, history:__app.history });
+  });
+  __app.router.register('dreamworld', DW);
+})();
+</script>
+
+<!-- ====== BACKROOMS ====== -->
+<script>
+(function(){
+  const BR = {
+    enter(){
+      __app.realm='backrooms';
+      eventBus.publish('image.request',{prompt:'liminal yellow hallways, damp carpet, humming lights, endless maze'});
+      __app.gameManager.commitTurn({ realm:'backrooms', text:'You slipped through a glitch. Move carefully.', decisions:[{text:'listen'},{text:'run'},{text:'mark a wall'}] });
+    }
+  };
+  eventBus.subscribe('applyDecision', a=>{
+    if(__app.realm!=='backrooms') return;
+    eventBus.publish('narrator.ask',{ realm:'backrooms', prompt:a.text, history:__app.history });
+  });
+  __app.router.register('backrooms', BR);
+})();
+</script>
+
+<!-- ====== CITY (ULS) ====== -->
+<script>
+(function(){
+  const ULS = {
+    enter(){
+      eventBus.publish('image.request',{prompt:'nighttime neon-splashed megacity streets, Tokyo x New York mashup, rain-slick, crowds and signage'});
+      eventBus.publish('hud.toast',{text:'Welcome to Chroma City.'});
+      ULS.prompt();
+    },
+    prompt(){
+      const q = "Where to? [explore • take a gig • rest • shop • rideshare • DND tournament • switch realm]";
+      const decisions = [
+        {text:'explore district'},{text:'take a gig'},{text:'rest at apartment'},{text:'shop'},
+        {text:'take a rideshare job'},{text:'enter DND tournament'},{text:'switch realm'}
+      ];
+      __app.gameManager.commitTurn({ realm:'uls', text:q, decisions });
+    }
+  };
+  eventBus.subscribe('applyDecision', a=>{
+    if(__app.realm!=='uls') return;
+    const t=(a.text||'').toLowerCase();
+    if(t.includes('explore')){ eventBus.publish('image.request',{prompt:'neon market district, crowds, signage, rainy reflections'}); ask('explore'); }
+    else if(t.includes('gig')){ ask('gig'); }
+    else if(t.includes('rest')){ eventBus.publish('image.request',{prompt:'small city apartment interior, cozy neon window glow'}); ask('rest'); eventBus.publish('rest.sober'); }
+    else if(t.includes('shop')){ ask('shop'); }
+    else if(t.includes('ride')){ eventBus.publish('job.uber.start',{}); }
+    else if(t.includes('dnd')){ eventBus.publish('job.dnd.start'); }
+    else if(t.includes('switch')){ __app.router.go('menu'); }
+  });
+  function ask(intent){ eventBus.publish('narrator.ask',{ realm:'uls', intent, player:__app.player, stats:__app.stats, history:__app.history }); }
+  __app.router.register('uls', ULS);
+})();
+</script>
+
+<!-- ====== TUTORIAL + CHARACTER CREATION ====== -->
+<div id="char">
+  <h3>Create Your Character</h3>
+  <input id="name" placeholder="Name">
+  <input id="role" placeholder="Role (anything)">
+  <label style="display:block;margin:8px 0"><input type="checkbox" id="adult"> Adult Mode</label>
+  <button onclick="createChar()">Start</button>
+</div>
+<script>
+(function(){
+  window.createChar = function(){
+    __app.player.name=name.value||'Rookie'; __app.player.role=role.value||'Free Spirit'; __app.player.adult=adult.checked;
+    eventBus.publish('character.created',{player:__app.player, stats:__app.stats});
+    document.getElementById('char').remove();
+    startTutorial();
+  };
+  window.startTutorial = function(){
+    // 1) Fever dream (Dreamworld)
+    __app.router.go('dreamworld');
+    eventBus.publish('hud.toast',{text:'Tutorial: God mode (brief).'});
+    // 2) Snap back to City
+    setTimeout(()=>{
+      __app.router.go('uls');
+      // 3) Reward: Monkey Paw item
+      eventBus.publish('monkeypaw.pickup');
+      eventBus.publish('hud.toast',{text:'You obtained the Monkey Paw. Type: "wish money 500" or open the Paw menu with: paw'});
+    }, 30000); // shorten as needed for demo
+  };
+})();
+</script>
+
+<!-- ====== MENU / REALM SWITCHER ====== -->
+<script>
+(function(){
+  const Menu={
+    enter(){
+      const d=document.createElement('div'); d.id='menu';
+      d.innerHTML=`<h3>Chroma City — Realms</h3>
+      <button onclick="__app.router.go('uls');document.getElementById('menu').remove()">City</button>
+      <button onclick="__app.router.go('living-hell');document.getElementById('menu').remove()">Living Hell</button>
+      <button onclick="__app.router.go('dreamworld');document.getElementById('menu').remove()">Dreamworld</button>
+      <button onclick="__app.router.go('backrooms');document.getElementById('menu').remove()">Backrooms</button>
+      <button onclick="eventBus.publish('credits.show')">Credits</button>`;
+      document.body.appendChild(d);
+    }
+  };
+  __app.router.register('menu', Menu);
+})();
+</script>
+
+<!-- ====== CREDITS ====== -->
+<script>
+(function(){
+  eventBus.subscribe('credits.show', ()=>{
+    const w=document.createElement('div'); w.style.cssText='position:fixed;inset:0;background:#000;z-index:99999';
+    w.innerHTML='<iframe src="'+ULS_CONFIG.CREDITS_URL+'" style="width:100%;height:100%;border:0"></iframe><button style="position:absolute;right:10px;top:10px" onclick="this.parentNode.remove()">Close</button>';
+    document.body.appendChild(w);
+  });
+})();
+</script>
+
+<!-- ====== TURN LOOP & INPUT HANDLER ====== -->
+<script>
+(function(){
+  const input = document.getElementById('playerInput');
+  const button= document.getElementById('submitBtn');
+
+  function commitAction(text){
+    if(!text.trim()) return;
+    // chat commands
+    const t=text.trim().toLowerCase();
+    if(t==='menu'){ __app.router.go('menu'); return; }
+    if(t==='paw'){ eventBus.publish('monkeypaw.open'); return; }
+    if(t.startsWith('wish ')){ // wish money 500 / wish fame 5 / wish health 10
+      const parts=t.split(/\s+/); const type=parts[1]; const amt=parseInt(parts[2]||'0',10);
+      eventBus.publish('monkeypaw.wish',{type, amount:isNaN(amt)?undefined:amt}); return;
+    }
+    if(t==='flip'){ eventBus.publish('coin.flip',{difficulty:'even', reward:15, failDamage:10}); return; }
+    if(t==='double or nothing' || t==='double-or-nothing'){ eventBus.publish('coin.doubleOrNothing'); return; }
+    if(t==='drink'){ eventBus.publish('drink.alcohol'); eventBus.publish('hud.toast',{text:'You take a drink…'}); }
+    if(t.startsWith('heat')){ // heat 2
+      const amt = parseInt(t.split(' ')[1] || '1', 10);
+      eventBus.publish('heat.add', { amount: isNaN(amt) ? 1 : amt });
+      return;
+    }
+
+    __app.gameManager.commitTurn({ realm:__app.realm, playerAction:text });
+
+    // route to current realm narrator
+    if(__app.realm==='uls') eventBus.publish('narrator.ask',{ realm:'uls', prompt:text, history:__app.history });
+    if(__app.realm==='living-hell') eventBus.publish('narrator.ask',{ realm:'living-hell', prompt:text, mode:'audience', history:__app.history });
+    if(__app.realm==='dreamworld') eventBus.publish('narrator.ask',{ realm:'dreamworld', prompt:text, history:__app.history });
+    if(__app.realm==='backrooms') eventBus.publish('narrator.ask',{ realm:'backrooms', prompt:text, history:__app.history });
+  }
+
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ commitAction(input.value); input.value=''; }});
+  button.addEventListener('click', ()=>{ commitAction(input.value); input.value=''; });
+
+  // Narrator responses enforce “consequence → next question”
+  eventBus.subscribe('narrator.response', pay=>{
+    if(pay?.statsDelta) eventBus.publish('stats.update', Object.assign(__app.stats, pay.statsDelta));
+    if(pay?.forceImagePrompt) eventBus.publish('image.request',{prompt:pay.forceImagePrompt});
+    const nq = (__app.realm==='living-hell') ? "What's your move? Keep the crowd happy—hurry!" : (pay?.nextQuestion || "What do you do next?");
+    const decisions = pay?.decisions || [{text:'continue'}];
+    __app.gameManager.commitTurn({ realm:__app.realm, text:nq, decisions });
+  });
+
+  // Result sounds from coin flips (in case narrator delegates back)
+  eventBus.subscribe('coin.result', r=>{ if(r.success) playDing(); else playBuzz(); });
+})();
+</script>
+
+<!-- ====== BOOT ====== -->
+<script>
+(function boot(){
+  // preload sfx (if provided)
+  if(ULS_CONFIG.SFX_DING) document.getElementById('sfx-ding').src=ULS_CONFIG.SFX_DING;
+  if(ULS_CONFIG.SFX_BUZZ) document.getElementById('sfx-buzz').src=ULS_CONFIG.SFX_BUZZ;
+  // start at city intro image
+  __app.router.go('uls');
+})();
+</script>
+
 </body>
 </html>

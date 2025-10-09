@@ -11,7 +11,7 @@
     "format": "prettier -w .",
     "test": "node node_modules/vitest/vitest.mjs run",
     "test:watch": "node node_modules/vitest/vitest.mjs",
-    "verify": "npx playwright test tests/e2e/verify.spec.mjs"
+    "verify": "npx playwright test tests/e2e/character_creation.spec.mjs"
   },
   "keywords": [
     "rpg",
