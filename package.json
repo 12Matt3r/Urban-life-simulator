@@ -1,34 +1,10 @@
 {
   "name": "urban-life-simulator",
-  "version": "1.0.0",
-  "type": "module",
-  "description": "A multi-realm, browser-based RPG.",
+  "private": true,
+  "version": "0.0.0",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "serve": "vite preview",
-    "lint": "eslint .",
-    "format": "prettier -w .",
-    "test": "node node_modules/vitest/vitest.mjs run",
-    "test:watch": "node node_modules/vitest/vitest.mjs",
-    "verify": "npx playwright test tests/e2e/character_creation.spec.mjs"
-  },
-  "keywords": [
-    "rpg",
-    "browser-game",
-    "vanilla-js"
-  ],
-  "author": "ULS Team",
-  "license": "UNLICENSED",
-  "devDependencies": {
-    "@playwright/test": "^1.47.0",
-    "@vitest/coverage-v8": "^2.0.5",
-    "eslint": "^9.12.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-import": "^2.31.0",
-    "jsdom": "^27.0.0",
-    "prettier": "^3.3.3",
-    "vite": "^5.4.8",
-    "vitest": "^2.0.5"
+    "dev": "echo 'This project is a single HTML file. No dev server needed.'",
+    "build": "echo 'This project is a single HTML file. No build needed.'",
+    "preview": "echo 'This project is a single HTML file. No preview needed.'"
   }
 }

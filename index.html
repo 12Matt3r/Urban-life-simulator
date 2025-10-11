@@ -53,21 +53,21 @@
     // Jobs (WebSim)
     DND_URL: 'https://websim.com/@SOFAKINGSADBOI/ultimate-nerd-championships',
 
-    // Monkey Paw (WebSim)
-    MONKEYPAW_URL: 'https://websim.com/@SOFAKINGSADBOI/the-monkey-s-paw',
+    // Monkey Paw (WebSim) —> PUT YOUR REAL URL HERE
+    MONKEYPAW_URL: 'https://websim.com/@YOURHANDLE/monkey-paw', // TODO: replace with your module
 
     // Credits
-    CREDITS_URL: 'https://youtu.be/YwwefX7-0r0?si=WEKnX1iLRQJcNLaZ',
+    CREDITS_URL: 'https://your.video.host/credits.html',
 
     // Radio stations (populate with your File Garden arrays)
     RADIO_STATIONS: [
-      { name: 'Cozy FM (Lofi)', tracks: ['https://file.garden/aNQEj1MKyWDQ8eyI/lofi/Nostalgic%20Currents.mp3'] },
-      { name: 'Viva La Disco (Latin)', tracks: ['https://file.garden/aNQEj1MKyWDQ8eyI/latin/Soltar.mp3'] },
-      { name: 'Bassface FM (Dubstep)', tracks: ['https://file.garden/aNQEj1MKyWDQ8eyI/dubstep/collard%20greens%20with%20a%20side%20of%20brain%20rott.wav'] },
-      { name: 'Hip Hop on the Block', tracks: ['https://file.garden/aNQEj1MKyWDQ8eyI/hiphop/Noemotion%20funk%202.mp3'] },
-      { name: 'BackFORTYdrip (Country)', tracks: ['https://file.garden/aNQEj1MKyWDQ8eyI/country/Back%20road%20confessions.mp3'] },
-      { name: 'Mosh Pit FM (Metal)', tracks: ['https://file.garden/aNQEj1MKyWDQ8eyI/metal/Whats%20in%20the%20Bowl%20Bitch.mp3'] },
-      { name: 'Notebook FM (Talk)', tracks: ['https://file.garden/aNQEj1MKyWDQ8eyI/Talk%20radio/Exit%20valley%20episode.mp3'] }
+      { name: 'Cozy FM (Lofi)', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/lofi-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/lofi-2.mp3'] },
+      { name: 'Viva La Disco (Latin)', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/latin-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/latin-2.mp3'] },
+      { name: 'Bassface FM (Dubstep)', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/dubstep-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/dubstep-2.mp3'] },
+      { name: 'Hip Hop on the Block', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/hiphop-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/hiphop-2.mp3'] },
+      { name: 'BackFORTYdrip (Country)', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/country-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/country-2.mp3'] },
+      { name: 'Mosh Pit FM (Metal)', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/metal-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/metal-2.mp3'] },
+      { name: 'Notebook FM (Talk)', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/talk-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/talk-2.mp3'] }
     ],
 
     // SFX (optional): add File Garden URLs if you want sounds
@@ -351,32 +351,6 @@
 })();
 </script>
 
-<!-- ====== CONSEQUENCE SYSTEM ====== -->
-<script>
-(function(){
-  const TICK_INTERVAL = 5000; // 5 seconds
-
-  function gameTick() {
-    if (__app.stats.heat > 0) {
-      // The chance of a consequence is (heat / 10).
-      // At heat 1, it's 10%. At max heat 5, it's 50%.
-      const chance = __app.stats.heat / 10;
-      if (Math.random() < chance) {
-        const moneyLost = 50;
-        eventBus.publish('hud.toast', { text: `Police shakedown! You lost $${moneyLost}.` });
-        eventBus.publish('stats.update', {
-          money: Math.max(0, __app.stats.money - moneyLost),
-          heat: Math.max(0, __app.stats.heat - 1)
-        });
-      }
-    }
-  }
-
-  setInterval(gameTick, TICK_INTERVAL);
-  console.log('Consequence System initialized with a 5-second tick.');
-})();
-</script>
-
 <!-- ====== ECONOMY ====== -->
 <script>
 (function(){
@@ -529,12 +503,28 @@
     else if(t.includes('gig')){ ask('gig'); }
     else if(t.includes('rest')){ eventBus.publish('image.request',{prompt:'small city apartment interior, cozy neon window glow'}); ask('rest'); eventBus.publish('rest.sober'); }
     else if(t.includes('shop')){ ask('shop'); }
-    else if(t.includes('ride')){ eventBus.publish('job.uber.start',{}); }
+    else if(t.includes('rideshare')){ eventBus.publish('job.uber.start',{}); }
+    else if(t.includes('drive safe')){
+      eventBus.publish('hud.toast',{text:'+ $20'});
+      eventBus.publish('stats.update',{money:__app.stats.money+20});
+      __app.gameManager.commitTurn({ realm:'uls', text:'Passenger mentions “Living Hell” auditions at the Glass Garden…', decisions:[{text:'ask more'},{text:'ignore'}]});
+    }
     else if(t.includes('dnd')){ eventBus.publish('job.dnd.start'); }
     else if(t.includes('switch')){ __app.router.go('menu'); }
+    else { ask(a.text); } // Default case: ask the narrator
   });
   function ask(intent){ eventBus.publish('narrator.ask',{ realm:'uls', intent, player:__app.player, stats:__app.stats, history:__app.history }); }
   __app.router.register('uls', ULS);
+})();
+</script>
+
+<!-- ====== UBER JOB ====== -->
+<script>
+(function(){
+  eventBus.subscribe('job.uber.start', ()=>{
+    eventBus.publish('image.request',{prompt:'rideshare car interior at night, neon city outside windows'});
+    __app.gameManager.commitTurn({ realm:'uls', text:'Pickup request accepted. Navigate to drop-off.', decisions:[{text:'drive safe'},{text:'speed to save time'}]});
+  });
 })();
 </script>
 
@@ -559,12 +549,13 @@
     __app.router.go('dreamworld');
     eventBus.publish('hud.toast',{text:'Tutorial: God mode (brief).'});
     // 2) Snap back to City
+    const transitionTime = window.__E2E_TEST_MODE__ ? 0 : 30000;
     setTimeout(()=>{
       __app.router.go('uls');
       // 3) Reward: Monkey Paw item
       eventBus.publish('monkeypaw.pickup');
       eventBus.publish('hud.toast',{text:'You obtained the Monkey Paw. Type: "wish money 500" or open the Paw menu with: paw'});
-    }, 30000); // shorten as needed for demo
+    }, transitionTime); // shorten as needed for demo
   };
 })();
 </script>
@@ -626,11 +617,8 @@
 
     __app.gameManager.commitTurn({ realm:__app.realm, playerAction:text });
 
-    // route to current realm narrator
-    if(__app.realm==='uls') eventBus.publish('narrator.ask',{ realm:'uls', prompt:text, history:__app.history });
-    if(__app.realm==='living-hell') eventBus.publish('narrator.ask',{ realm:'living-hell', prompt:text, mode:'audience', history:__app.history });
-    if(__app.realm==='dreamworld') eventBus.publish('narrator.ask',{ realm:'dreamworld', prompt:text, history:__app.history });
-    if(__app.realm==='backrooms') eventBus.publish('narrator.ask',{ realm:'backrooms', prompt:text, history:__app.history });
+    // Publish a general decision event that the active realm can listen for.
+    eventBus.publish('applyDecision', { text });
   }
 
   input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ commitAction(input.value); input.value=''; }});
@@ -656,8 +644,12 @@
   // preload sfx (if provided)
   if(ULS_CONFIG.SFX_DING) document.getElementById('sfx-ding').src=ULS_CONFIG.SFX_DING;
   if(ULS_CONFIG.SFX_BUZZ) document.getElementById('sfx-buzz').src=ULS_CONFIG.SFX_BUZZ;
-  // start at city intro image
-  __app.router.go('uls');
+
+  // E2E test hook: if this is a test, don't show character creation
+  if (window.__E2E_TEST_MODE__) {
+    document.getElementById('char').remove();
+    __app.router.go('uls');
+  }
 })();
 </script>
 

@@ -2,7 +2,7 @@
 
 Urban Life Simulator is an experimental, browser-based RPG that has evolved into a multi-realm experience. Players can create their own role, make choices, survive challenges, and explore distinct, interconnected worlds, each with its own theme and gameplay mechanics.
 
-This project is built to be 100% client-side, ES5/Safari-compatible, and ready for deployment on static hosting platforms.
+This project is a 100% client-side, single-file application, ready for deployment on any static hosting platform or for use directly from your local file system.
 
 ## 🚀 Core Features
 
@@ -21,65 +21,47 @@ Explore four distinct realms, each offering a unique experience:
 - **Wanted System:** Actions have consequences. Gain "HEAT" from illicit activities, which translates into a 0-5 star wanted level, affecting how the world reacts to you.
 
 ### Rich Audio Experience
-- **7-Station Radio:** The ULS Car Radio features seven distinct stations with extensive playlists and full playback controls, including a persistent shuffle mode. Stations include:
-  - Cozy FM (Lofi)
-  - Viva La Disco (Latin)
-  - Bassface FM (Dubstep)
-  - Hip Hop on the Block
-  - BackFORTYdrip (Country)
-  - Mosh Pit FM (Metal)
-  - Notebook FM (Talk Radio)
-- **Comprehensive SFX System:** A dynamic sound effects system brings the world to life with UI sounds, ambient loops for different environments, and narrative enhancers for dramatic moments.
+- **7-Station Radio:** The ULS Car Radio features seven distinct stations with extensive playlists and full playback controls, including a persistent shuffle mode.
+- **Comprehensive SFX System:** A dynamic sound effects system brings the world to life with UI sounds and narrative enhancers for dramatic moments.
 
 ### Persistence & Narrative
 - **Local Storage:** Game state is persisted in the browser's local storage.
-- **Mock Narrative Engine:** The game currently uses a mock narrative engine for development and testing. This engine simulates the basic handshake and sequence flow required by the main application.
+- **WebSim Narrative Engine:** The game integrates with external narrative modules hosted on WebSim, allowing for dynamic and expandable storytelling.
 
 ## 🛠️ Tech Stack
 
--   **Frontend:** Vanilla JavaScript (ESM), HTML5, CSS3
--   **Development Tooling:** Vite, Vitest, Playwright
--   **Narrative Engine:** Mock Engine (iframe integration)
--   **Audio:** Native HTML5 `<audio>`
-
-## 📦 Setup & Installation
-
-This project uses Node.js and Vite for development.
-
-1.  **Clone the Repository:**
-    ```bash
-    git clone https://github.com/your-username/your-repo-name.git
-    cd your-repo-name
-    ```
-
-2.  **Install Dependencies:**
-    ```bash
-    npm install
-    ```
-
-3.  **Run the Development Server:**
-    ```bash
-    npm run dev
-    ```
-    The application will be available at `http://localhost:5173`. The server supports hot-reloading.
-
-4.  **Run Tests:**
-    - To run unit tests: `npm run test`
-    - To run E2E verification tests: `npm run verify` (requires the dev server to be running)
-
+-   **Frontend:** Vanilla JavaScript (ES5-compatible), HTML5, CSS3
 
 ## 🎮 How to Play
 
-1.  **Start the Game:** Navigate to `http://localhost:5173` after running `npm run dev`.
-2.  **Character Creation:**
+Because this is a single-file web application, there is no build process.
+
+1.  **Clone the Repository (Optional):**
+    If you want to have a local copy, you can clone this repository.
+    ```bash
+    git clone https://github.com/your-username/your-repo-name.git
+    ```
+
+2.  **Run the Game:**
+    -   **Option A (Recommended):** Serve the project root directory with a simple local web server. This is necessary for the narrative and image generation iframes to work correctly due to browser security policies.
+        ```bash
+        # If you have Python 3 installed
+        python3 -m http.server 8000
+        ```
+        Then, open your browser and navigate to `http://localhost:8000`.
+    -   **Option B (Offline):** You can open the `index.html` file directly in your web browser. Note that some features that rely on cross-origin iframes may not function as expected with this method.
+
+3.  **Character Creation:**
     -   Enter your character's name.
     -   Type any role you can imagine into the freeform input field.
     -   Choose whether to enable **Adult Mode** for a more mature experience.
-3.  **Live Your Life:**
-    -   Follow the narrative prompts presented by the mock narrator.
+
+4.  **Live Your Life:**
+    -   Follow the narrative prompts presented by the narrator.
     -   Make choices that will shape your story and impact your stats.
     -   Listen to the radio, explore different realms, and try to survive the challenges thrown your way.
-4.  **Developer Debugging:**
+
+5.  **Developer Debugging:**
     -   When the application is running, open your browser's developer console.
     -   You can access all the core game systems via the `window.__app` object for debugging purposes.
-    -   For example, to give yourself 100 money, you could run: `window.__app.gameManager.modifyStat('money', 100)`
+    -   For example, to give yourself 100 money, you could run: `eventBus.publish('stats.update', { money: window.__app.stats.money + 100 })`
