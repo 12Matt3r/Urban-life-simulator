@@ -247,37 +247,115 @@
 })();
 </script>
 
-<!-- ====== SAVE / TRANSCRIPT ====== -->
+<!-- ====== SAVE / TRANSCRIPT (v2) ====== -->
 <script>
 (function(){
   const LS_RUN='uls.currentRun', LS_SLOTS='uls.saveSlots';
+  const VERSION=2;
+
   const Save = {
-    cur:null, init(){ this.cur=JSON.parse(localStorage.getItem(LS_RUN)||'null')||this.new(); this.flush(); },
-    new(){ return {runId:Date.now()+'-'+Math.random().toString(36).slice(2), player:{}, stats:{}, realm:'uls', log:[]}; },
-    logTurn(entry){ this.cur.log.push(entry); this.flush(); },
-    setPlayer(p){ Object.assign(this.cur.player,p); this.flush(); },
-    setStats(s){ Object.assign(this.cur.stats,s); this.flush(); },
-    setRealm(r){ this.cur.realm=r; this.flush(); },
+    cur:null,
+    init(){
+      const existing = JSON.parse(localStorage.getItem(LS_RUN)||'null');
+      this.cur = (existing && existing.version===VERSION) ? existing : this.new();
+      this.flush();
+    },
+    new(){
+      return {
+        version: VERSION,
+        runId: Date.now()+'-'+Math.random().toString(36).slice(2),
+        player: {},
+        stats: { health:100, sanity:100, money:0, fame:0, heat:0 },
+        realm: 'uls',
+        log: []
+      };
+    },
+    logTurn(entry){
+      entry.ts = Date.now();
+      this.cur.log.push(entry);
+      this.flush();
+      eventBus.publish('transcript.append', entry);
+    },
+    setPlayer(p){ Object.assign(this.cur.player, p); this.flush(); },
+    setStats(s){ Object.assign(this.cur.stats, s); this.flush(); },
+    setRealm(r){ this.cur.realm = r; this.flush(); },
     flush(){ localStorage.setItem(LS_RUN, JSON.stringify(this.cur)); },
-    export(){ const b=new Blob([JSON.stringify(this.cur,null,2)],{type:'application/json'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download='uls_'+this.cur.runId+'.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),500); },
-    import(obj){ if(!obj?.log) return false; this.cur=obj; this.flush(); return true; },
-    saveSlot(i,title){ const slots=JSON.parse(localStorage.getItem(LS_SLOTS)||'[]'); while(slots.length<3) slots.push(null); slots[i]={title:title||('Save '+(i+1)), ts:Date.now(), snapshot:this.cur}; localStorage.setItem(LS_SLOTS, JSON.stringify(slots)); },
-    loadSlot(i){ const s=JSON.parse(localStorage.getItem(LS_SLOTS)||'[]')[i]; if(!s) return false; this.cur=s.snapshot; this.flush(); return true; }
+    export(){
+      const b=new Blob([JSON.stringify(this.cur,null,2)],{type:'application/json'});
+      const u=URL.createObjectURL(b);
+      const a=document.createElement('a'); a.href=u; a.download='uls_'+this.cur.runId+'.json'; a.click();
+      setTimeout(()=>URL.revokeObjectURL(u),500);
+    },
+    import(obj){
+      if(!obj || obj.version!==VERSION || !Array.isArray(obj.log)) return false;
+      this.cur=obj; this.flush(); eventBus.publish('hud.toast',{text:'Save imported.'}); return true;
+    },
+    saveSlot(i,title){
+      const slots=JSON.parse(localStorage.getItem(LS_SLOTS)||'[]');
+      while(slots.length<3) slots.push(null);
+      slots[i]={title:title||('Save '+(i+1)), ts:Date.now(), snapshot:this.cur};
+      localStorage.setItem(LS_SLOTS, JSON.stringify(slots));
+      eventBus.publish('hud.toast',{text:`Saved to slot ${i+1}.`});
+    },
+    loadSlot(i){
+      const slots=JSON.parse(localStorage.getItem(LS_SLOTS)||'[]');
+      const s=slots[i]; if(!s) return false;
+      this.cur=s.snapshot; this.flush();
+      eventBus.publish('hud.toast',{text:`Loaded slot ${i+1}.`});
+      eventBus.publish('stats.update', this.cur.stats);
+      eventBus.publish('realm.changed', { realm:this.cur.realm });
+      eventBus.publish('transcript.reset', this.cur.log);
+      return true;
+    }
   };
   Save.init();
   window.Save=Save;
 
-  eventBus.subscribe('turn.commit', e=>Save.logTurn(e));
-  eventBus.subscribe('character.created', p=>{ Save.setPlayer(p.player); Save.setStats(p.stats); });
+  // Wire into existing events
+  eventBus.subscribe('turn.commit', e=>{
+    const lastImg = (e.imagePrompt || __app?.lastImagePrompt || null);
+    Save.logTurn(Object.assign({}, e, lastImg?{imagePrompt:lastImg}:{}) );
+  });
+  eventBus.subscribe('character.created', p=>{ Save.setPlayer(p.player); Save.setStats(__app.stats); });
   eventBus.subscribe('stats.update', s=>Save.setStats(__app.stats));
   eventBus.subscribe('realm.changed', p=>Save.setRealm(p.realm));
 
-  // quick buttons
-  const bar=document.createElement('div'); bar.style.cssText='position:fixed;right:12px;bottom:60px;background:rgba(0,0,0,.5);color:#fff;padding:6px;border-radius:8px;z-index:9999';
-  bar.innerHTML=`<button onclick="Save.export()">Export</button>
-  <button onclick="Save.saveSlot(0,'Slot 1')">Save1</button><button onclick="Save.loadSlot(0)">Load1</button>
-  <button onclick="Save.saveSlot(1,'Slot 2')">Save2</button><button onclick="Save.loadSlot(1)">Load2</button>`;
-  document.body.appendChild(bar);
+  // Transcript Viewer UI
+  const tray=document.createElement('div');
+  tray.id='transcript';
+  tray.style.cssText='position:fixed;right:12px;bottom:120px;width:360px;max-height:50vh;overflow:auto;background:rgba(0,0,0,.6);color:#fff;border-radius:8px;padding:8px;z-index:9999;font:12px system-ui;display:none';
+  tray.innerHTML='<b>Transcript</b><div id="transcript-body" style="margin-top:6px"></div>';
+  document.body.appendChild(tray);
+
+  const controls=document.createElement('div');
+  controls.style.cssText='position:fixed;right:12px;bottom:60px;background:rgba(0,0,0,.5);color:#fff;padding:6px;border-radius:8px;z-index:9999;display:flex;gap:6px;flex-wrap:wrap';
+  controls.innerHTML=`
+    <button onclick="Save.export()">Export</button>
+    <button onclick="Save.saveSlot(0,'Slot 1')">Save1</button><button onclick="Save.loadSlot(0)">Load1</button>
+    <button onclick="Save.saveSlot(1,'Slot 2')">Save2</button><button onclick="Save.loadSlot(1)">Load2</button>
+    <button onclick="document.getElementById('transcript').style.display =
+      (document.getElementById('transcript').style.display==='none'?'block':'none')">Transcript</button>`;
+  document.body.appendChild(controls);
+
+  function renderTranscript(list){
+    const body=document.getElementById('transcript-body'); if(!body) return;
+    body.innerHTML='';
+    (list||[]).forEach(t=>{
+      const d=document.createElement('div');
+      d.style.cssText='border-top:1px solid rgba(255,255,255,.1);padding:6px 0';
+      d.innerHTML = `
+        <div style="opacity:.7">${new Date(t.ts||Date.now()).toLocaleTimeString()} — <i>${t.realm||''}</i></div>
+        ${t.playerAction ? `<div><b>You:</b> ${t.playerAction}</div>`:''}
+        ${t.text ? `<div><b>Narrator:</b> ${t.text}</div>`:''}
+        ${t.narratorText ? `<div><b>Narrator:</b> ${t.narratorText}</div>`:''}
+        ${t.imagePrompt ? `<div style="opacity:.8">[image: ${t.imagePrompt}]</div>`:''}
+      `;
+      body.appendChild(d);
+    });
+  }
+  eventBus.subscribe('transcript.reset', list=>renderTranscript(list));
+  eventBus.subscribe('transcript.append', t=>renderTranscript(Save.cur.log));
+  renderTranscript(Save.cur.log);
 })();
 </script>
 
@@ -330,13 +408,19 @@
 (function(){
   eventBus.subscribe('job.dnd.start', ()=>{
     const w=document.createElement('div'); w.id='dnd-host'; w.style.cssText='position:fixed;inset:5%;background:#000;z-index:99999';
-    w.innerHTML='<iframe src="'+ULS_CONFIG.DND_URL+'" style="width:100%;height:100%;border:0"></iframe><button style="position:absolute;right:8px;top:8px" onclick="document.getElementById(\'dnd-host\').remove()">Exit</button>';
+    w.innerHTML='<iframe id="dnd-frame" src="'+ULS_CONFIG.DND_URL+'" style="width:100%;height:100%;border:0"></iframe><button style="position:absolute;right:8px;top:8px" onclick="document.getElementById(\'dnd-host\').remove()">Exit</button>';
     document.body.appendChild(w);
   });
   window.addEventListener('message', e=>{
-    if(e.data && e.data.type==='dnd.win'){
-      eventBus.publish('stats.update',{money:__app.stats.money+150});
-      eventBus.publish('hud.toast',{text:'DND Tournament Won! +$150'});
+    const d=e.data||{};
+    if(d.source==='uls-dnd' && d.type==='win'){
+      const prize = Number.isFinite(d.prize) ? d.prize : 150;
+      eventBus.publish('stats.update',{money: __app.stats.money+prize});
+      eventBus.publish('hud.toast',{text:`DND Tournament Won! +$${prize}`});
+      document.getElementById('dnd-host')?.remove();
+    }
+    if(d.source==='uls-dnd' && d.type==='exit'){
+      document.getElementById('dnd-host')?.remove();
     }
   });
 })();
@@ -494,6 +578,25 @@
 })();
 </script>
 
+<!-- ====== JOB BOARD ====== -->
+<script>
+(function(){
+  function openJobs(){
+    const w=document.createElement('div'); w.id='jobs'; w.style.cssText='position:fixed;inset:10%;background:#0b0b0b;color:#fff;border:1px solid #333;border-radius:10px;z-index:99999;padding:12px';
+    w.innerHTML=`
+      <h3>Job Board</h3>
+      <p>Pick up quick gigs for cash.</p>
+      <button id="job-uber">Rideshare ($20–$60)</button>
+      <button id="job-dnd">DND Tournament (big prize)</button>
+      <div style="margin-top:10px"><button onclick="document.getElementById('jobs').remove()">Close</button></div>`;
+    document.body.appendChild(w);
+    document.getElementById('job-uber').onclick=()=>{ eventBus.publish('job.uber.start'); w.remove(); };
+    document.getElementById('job-dnd').onclick=()=>{ eventBus.publish('job.dnd.start'); w.remove(); };
+  }
+  window.openJobs = openJobs;
+})();
+</script>
+
 <!-- ====== SYSTEMS ====== -->
 <script src="src/systems/NarrativeManager.js"></script>
 <script src="src/systems/TutorialController.js"></script>
@@ -555,6 +658,57 @@
 })();
 </script>
 
+<!-- ====== AUTOPILOT HANDOFF ====== -->
+<script>
+(function(){
+  let autoOn=false, idleTimer=null, IDLE_MS=60000;
+
+  function setAutopilot(on){
+    autoOn=!!on;
+    eventBus.publish('hud.toast',{text: autoOn?'Autopilot engaged.':'Autopilot disengaged.'});
+    eventBus.publish('autopilot.state', {on:autoOn});
+  }
+  window.__setAutopilot = setAutopilot;
+
+  function resetIdle(){
+    clearTimeout(idleTimer);
+    idleTimer=setTimeout(()=>{
+      if(!autoOn) eventBus.publish('hud.toast',{text:'Idle detected. Type "autopilot on" to let the game continue itself.'});
+    }, IDLE_MS);
+  }
+  resetIdle();
+
+  // UI command parser hook: add to your input handler
+  const origCommit = window.__commitAction;
+  window.__commitAction = function(text){
+    if(!text) return;
+    const t=text.trim().toLowerCase();
+    if(t==='autopilot on'){ setAutopilot(true); return; }
+    if(t==='autopilot off'){ setAutopilot(false); return; }
+    resetIdle();
+    origCommit(text);
+  };
+
+  // When autopilot is on, ask the narrator for a suggested action and apply it
+  eventBus.subscribe('turn.commit', ()=>{
+    if(!autoOn) return;
+    eventBus.publish('narrator.autopilot.suggestAction',{ realm:__app.realm, player:__app.player, stats:__app.stats, history:__app.history });
+  });
+  eventBus.subscribe('narrator.autopilot.suggestion', pay=>{
+    if(!autoOn || !pay?.action) return;
+    // Apply the suggested action as if player typed it
+    window.__commitAction(pay.action);
+  });
+
+  // Tiny status pill
+  const pill=document.createElement('div');
+  pill.style.cssText='position:fixed;left:12px;top:80px;background:rgba(0,0,0,.55);color:#fff;padding:6px 8px;border-radius:8px;z-index:9998;font:12px system-ui';
+  pill.textContent='Autopilot: OFF';
+  document.body.appendChild(pill);
+  eventBus.subscribe('autopilot.state', s=>{ pill.textContent='Autopilot: '+(s.on?'ON':'OFF'); });
+})();
+</script>
+
 <!-- ====== TURN LOOP & INPUT HANDLER ====== -->
 <script>
 (function(){
@@ -566,6 +720,7 @@
     // chat commands
     const t=text.trim().toLowerCase();
     if(t==='menu'){ __app.router.go('menu'); return; }
+    if(t==='jobs'){ window.openJobs(); return; }
     if(t==='paw'){ eventBus.publish('monkeypaw.open'); return; }
     if(t.startsWith('wish ')){ // wish money 500 / wish fame 5 / wish health 10
       const parts=t.split(/\s+/); const type=parts[1]; const amt=parseInt(parts[2]||'0',10);
@@ -585,9 +740,10 @@
     // Publish a general decision event that the active realm can listen for.
     eventBus.publish('applyDecision', { text });
   }
+  window.__commitAction = commitAction;
 
-  input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ commitAction(input.value); input.value=''; }});
-  button.addEventListener('click', ()=>{ commitAction(input.value); input.value=''; });
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ window.__commitAction(input.value); input.value=''; }});
+  button.addEventListener('click', ()=>{ window.__commitAction(input.value); input.value=''; });
 
   // Narrator responses enforce “consequence → next question”
   eventBus.subscribe('narrator.response', pay=>{
