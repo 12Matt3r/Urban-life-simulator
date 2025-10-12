@@ -1,0 +1,11 @@
+{
+  "id": "buy_armor",
+  "steps": [
+    {
+      "text": "'This should do the trick,' he says, holding up a dusty set of leather pads.",
+      "decisions": [
+        { "text": "Buy Leather Pads ($10)", "action": "BUY_ITEM", "item": { "name": "Leather Pads", "type": "armor", "cost": 10 } }
+      ]
+    }
+  ]
+}

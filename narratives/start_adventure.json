@@ -1,0 +1,11 @@
+{
+  "id": "start_adventure",
+  "steps": [
+    {
+      "text": "Time to make a name for yourself. What's your first move?",
+      "decisions": [
+        { "text": "Head into the city", "action": "START_ADVENTURE" }
+      ]
+    }
+  ]
+}

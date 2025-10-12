@@ -1,0 +1,11 @@
+{
+  "id": "buy_weapon",
+  "steps": [
+    {
+      "text": "The shopkeeper eyes you. 'Fresh off the transport, eh? You'll need protection. A good weapon is a good start.'",
+      "decisions": [
+        { "text": "Buy a Rusty Pipe ($5)", "action": "BUY_ITEM", "item": { "name": "Rusty Pipe", "type": "weapon", "cost": 5 } }
+      ]
+    }
+  ]
+}

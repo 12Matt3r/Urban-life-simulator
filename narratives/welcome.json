@@ -1,0 +1,11 @@
+{
+  "id": "welcome",
+  "steps": [
+    {
+      "text": "Welcome to Chroma City, rookie. Your journey begins now."
+    },
+    {
+      "text": "First things first, you'll need some gear. Let's head to the shop."
+    }
+  ]
+}

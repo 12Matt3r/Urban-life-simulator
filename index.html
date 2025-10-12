@@ -95,28 +95,12 @@
 </div>
 <div id="toasts"></div>
 
-<div id="radio">
-  <select id="station"></select>
-  <button id="rPrev">⏮</button>
-  <button id="rToggle">⏯</button>
-  <button id="rNext">⏭</button>
-  <label><input type="checkbox" id="rShuffle"> shuffle</label>
-</div>
-<audio id="radio-audio" crossorigin="anonymous"></audio>
 <audio id="sfx-ding" src=""></audio>
 <audio id="sfx-buzz" src=""></audio>
 
 <!-- ====== CORE BUS / APP ====== -->
+<script src="src/systems/bus.js"></script>
 <script>
-  // Tiny event bus
-  window.eventBus = (function(){
-    const subs = {};
-    return {
-      publish: (topic, payload) => (subs[topic]||[]).forEach(fn=>fn(payload)),
-      subscribe:(topic, fn)=>((subs[topic]=subs[topic]||[]).push(fn))
-    };
-  })();
-
   // App state
   window.__app = {
     history: [],
@@ -156,9 +140,9 @@
 </script>
 
 <!-- ====== RADIO ====== -->
+<script src="src/systems/Radio.js"></script>
 <script>
 (function(){
-  const A=document.getElementById('radio-audio');
   const dingEl=document.getElementById('sfx-ding');
   const buzzEl=document.getElementById('sfx-buzz');
   // load SFX if provided
@@ -166,24 +150,6 @@
   if(ULS_CONFIG.SFX_BUZZ) buzzEl.src=ULS_CONFIG.SFX_BUZZ;
   window.playDing = ()=>{ if(dingEl.src) dingEl.play(); };
   window.playBuzz = ()=>{ if(buzzEl.src) buzzEl.play(); };
-
-  const stations = ULS_CONFIG.RADIO_STATIONS||[];
-  let curS=0, curT=0, shuffle=false;
-  const sel=document.getElementById('station');
-  stations.forEach((s,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=s.name; sel.appendChild(o); });
-  function setStation(i){ curS=i; curT=0; play(); eventBus.publish('radio.changed',{station:stations[curS]?.name}); }
-  function setShuffle(v){ shuffle=!!v; }
-  function next(){ if(!stations[curS]) return; if(shuffle) curT=Math.floor(Math.random()*stations[curS].tracks.length); else curT=(curT+1)%stations[curS].tracks.length; play(); }
-  function prev(){ if(!stations[curS]) return; curT=(curT-1+stations[curS].tracks.length)%stations[curS].tracks.length; play(); }
-  function play(){ const s=stations[curS]; if(!s||!s.tracks.length) return; const url=s.tracks[curT]; A.src=url; A.play(); }
-  function toggle(){ if(A.paused) A.play(); else A.pause(); }
-  sel.onchange=()=>setStation(+sel.value);
-  document.getElementById('rShuffle').onchange=(e)=>setShuffle(e.target.checked);
-  document.getElementById('rPrev').onclick=prev;
-  document.getElementById('rNext').onclick=next;
-  document.getElementById('rToggle').onclick=toggle;
-  if(stations.length) setStation(0);
-  window.Radio={ next, prev, toggle, setShuffle };
 })();
 </script>
 
@@ -528,6 +494,13 @@
 })();
 </script>
 
+<!-- ====== SYSTEMS ====== -->
+<script src="src/systems/NarrativeManager.js"></script>
+<script src="src/systems/TutorialController.js"></script>
+
+<!-- ====== UI ====== -->
+<script src="src/ui/NarrativeUI.js"></script>
+
 <!-- ====== TUTORIAL + CHARACTER CREATION ====== -->
 <div id="char">
   <h3>Create Your Character</h3>
@@ -540,22 +513,14 @@
 (function(){
   window.createChar = function(){
     __app.player.name=name.value||'Rookie'; __app.player.role=role.value||'Free Spirit'; __app.player.adult=adult.checked;
+    // Give player some starting money for the tutorial
+    Object.assign(__app.stats, { money: 20 });
     eventBus.publish('character.created',{player:__app.player, stats:__app.stats});
     document.getElementById('char').remove();
     startTutorial();
   };
   window.startTutorial = function(){
-    // 1) Fever dream (Dreamworld)
-    __app.router.go('dreamworld');
-    eventBus.publish('hud.toast',{text:'Tutorial: God mode (brief).'});
-    // 2) Snap back to City
-    const transitionTime = window.__E2E_TEST_MODE__ ? 0 : 30000;
-    setTimeout(()=>{
-      __app.router.go('uls');
-      // 3) Reward: Monkey Paw item
-      eventBus.publish('monkeypaw.pickup');
-      eventBus.publish('hud.toast',{text:'You obtained the Monkey Paw. Type: "wish money 500" or open the Paw menu with: paw'});
-    }, transitionTime); // shorten as needed for demo
+    eventBus.publish('TUTORIAL_START');
   };
 })();
 </script>
