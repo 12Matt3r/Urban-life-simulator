@@ -41,38 +41,27 @@
 <!-- ====== CONFIG ====== -->
 <script>
   window.ULS_CONFIG = {
-    // Narrators (WebSim)
-    NARRATOR_PG13_URL  : 'https://websim.com/@SOFAKINGSADBOI/uls-narrator-api-pg-13',
-    NARRATOR_ADULT_URL : 'https://websim.com/@SOFAKINGSADBOI/uls-narrator-adult-mode',
-    // Autopilot narrator (optional; can be same as PG-13)
-    NARRATOR_AUTOPILOT_URL: 'https://websim.com/@SOFAKINGSADBOI/narrator-api',
+    // Narrators
+    NARRATOR_PG13_URL      : 'https://websim.com/@SOFAKINGSADBOI/uls-narrator-api-pg-13',
+    NARRATOR_ADULT_URL     : 'https://websim.com/@SOFAKINGSADBOI/uls-narrator-adult-mode',
+    NARRATOR_AUTOPILOT_URL : 'https://websim.com/@SOFAKINGSADBOI/narrator-api',
 
     // Image Generator (WebSim)
-    IMAGE_RENDER_URL: 'https://websim.com/@DominoDaddy/free-image-generator',
+    IMAGE_RENDER_URL       : 'https://websim.com/@SOFAKINGSADBOI/simple-image-generator',
 
-    // Jobs (WebSim)
-    DND_URL: 'https://websim.com/@SOFAKINGSADBOI/ultimate-nerd-championships',
+    // Radio (single iframe app)
+    RADIO_IFRAME_URL       : 'https://websim.com/@SOFAKINGSADBOI/web-page-with-google-fonts-and-custom-styles',
 
-    // Monkey Paw (WebSim) —> PUT YOUR REAL URL HERE
-    MONKEYPAW_URL: 'https://websim.com/@YOURHANDLE/monkey-paw', // TODO: replace with your module
+    // Jobs / Modules
+    DND_URL                : 'https://websim.com/@SOFAKINGSADBOI/ultimate-nerd-championships',
+    MONKEYPAW_URL          : 'https://websim.com/p/7qg637rv4g5cqzmhqeux',
 
-    // Credits
-    CREDITS_URL: 'https://your.video.host/credits.html',
+    // Credits (update when final)
+    CREDITS_URL            : 'https://your.video.host/credits.html',
 
-    // Radio stations (populate with your File Garden arrays)
-    RADIO_STATIONS: [
-      { name: 'Cozy FM (Lofi)', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/lofi-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/lofi-2.mp3'] },
-      { name: 'Viva La Disco (Latin)', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/latin-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/latin-2.mp3'] },
-      { name: 'Bassface FM (Dubstep)', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/dubstep-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/dubstep-2.mp3'] },
-      { name: 'Hip Hop on the Block', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/hiphop-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/hiphop-2.mp3'] },
-      { name: 'BackFORTYdrip (Country)', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/country-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/country-2.mp3'] },
-      { name: 'Mosh Pit FM (Metal)', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/metal-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/metal-2.mp3'] },
-      { name: 'Notebook FM (Talk)', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/talk-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/talk-2.mp3'] }
-    ],
-
-    // SFX (optional): add File Garden URLs if you want sounds
-    SFX_DING  : '', // e.g. 'https://file.garden/.../ding.mp3'
-    SFX_BUZZ  : ''  // e.g. 'https://file.garden/.../buzz.mp3'
+    // Optional SFX (hosted in SFX WebSim)
+    SFX_DING               : 'https://ef_a_5z1s700iqy97qk4.c.websim.com/succsess.wav',
+    SFX_BUZZ               : 'https://ef_a_5z1s700iqy97qk4.c.websim.com/failure.mp3'
   };
 </script>
 
@@ -709,6 +698,57 @@
 })();
 </script>
 
+<script>
+/** Narrator→Image Patch v2
+ * Always request an image after each narrator response.
+ * Priority:
+ *  1) payload.forceImagePrompt (already supported)
+ *  2) payload.imagePrompt (soft field, optional)
+ *  3) synthesize from (realm + text) with realm-specific style
+ */
+(function(){
+  const REALM_STYLE = {
+    'uls'         : 'nighttime neon Tokyo×NYC, rain-slick streets, cinematic, depth-of-field',
+    'living-hell' : 'reality show house, fishtank glass, dramatic studio lighting, voyeur cams',
+    'dreamworld'  : 'surreal floating islands, cosmic sky, vapor haze, symbolic motifs',
+    'backrooms'   : 'liminal yellow hallways, damp carpet, humming fluorescent lights'
+  };
+
+  function synthPrompt(realm, text){
+    const base = REALM_STYLE[realm] || 'cinematic scene, moody lighting';
+    const brief = (text||'').slice(0,160).replace(/\s+/g,' ').trim() || 'player choice moment';
+    return `${base}; context: ${brief}`;
+  }
+
+  function requestImageFrom(pay){
+    if (pay?.forceImagePrompt) {
+      eventBus.publish('image.request', { prompt: pay.forceImagePrompt });
+      return;
+    }
+    if (pay?.imagePrompt) {
+      eventBus.publish('image.request', { prompt: pay.imagePrompt });
+      return;
+    }
+    const realm = __app.realm || 'uls';
+    eventBus.publish('image.request', { prompt: synthPrompt(realm, pay?.text) });
+  }
+
+  // Wrap existing narrator.response handling
+  const onResponse = (pay)=>{
+    if (pay?.statsDelta) eventBus.publish('stats.update', Object.assign(__app.stats, pay.statsDelta));
+    requestImageFrom(pay);
+    const nq = (__app.realm==='living-hell')
+      ? "What's your move? Keep the crowd happy—hurry!"
+      : (pay?.nextQuestion || "What do you do next?");
+    const decisions = pay?.decisions || [{text:'continue'}];
+    __app.gameManager.commitTurn({ realm:__app.realm, text:nq, decisions });
+  };
+
+  // Bind safely (idempotent)
+  eventBus.subscribe('narrator.response', onResponse);
+})();
+</script>
+
 <!-- ====== TURN LOOP & INPUT HANDLER ====== -->
 <script>
 (function(){
@@ -745,14 +785,6 @@
   input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ window.__commitAction(input.value); input.value=''; }});
   button.addEventListener('click', ()=>{ window.__commitAction(input.value); input.value=''; });
 
-  // Narrator responses enforce “consequence → next question”
-  eventBus.subscribe('narrator.response', pay=>{
-    if(pay?.statsDelta) eventBus.publish('stats.update', Object.assign(__app.stats, pay.statsDelta));
-    if(pay?.forceImagePrompt) eventBus.publish('image.request',{prompt:pay.forceImagePrompt});
-    const nq = (__app.realm==='living-hell') ? "What's your move? Keep the crowd happy—hurry!" : (pay?.nextQuestion || "What do you do next?");
-    const decisions = pay?.decisions || [{text:'continue'}];
-    __app.gameManager.commitTurn({ realm:__app.realm, text:nq, decisions });
-  });
 
   // Result sounds from coin flips (in case narrator delegates back)
   eventBus.subscribe('coin.result', r=>{ if(r.success) playDing(); else playBuzz(); });
