@@ -1,8 +1,10 @@
 'use strict';
 
-// Import the modules we have already refactored
 import { AssetManager } from './systems/asset_manager.js';
 import { GameManager } from './systems/game.js';
+import { initializeAuth, signInAnonymously, isAuthenticated } from './utils/auth.js';
+import { loadMostRecentSave } from './utils/storage.js';
+import './config.js';
 
 // --- TEMPORARY MIGRATION STEP ---
 // The files below are not yet ES modules. Importing them ensures they execute
@@ -85,7 +87,16 @@ function initializeAllSystems(registry) {
  */
 export async function initGame() {
   try {
-    const response = await fetch('/src/assets.json'); // Vite serves from the project root
+    initializeAuth();
+
+    const authenticated = await isAuthenticated();
+
+    if (!authenticated) {
+      console.log('No active session, signing in anonymously...');
+      await signInAnonymously();
+    }
+
+    const response = await fetch('/src/assets.json');
     if (!response.ok) {
       throw new Error(`Failed to fetch asset registry: ${response.statusText}`);
     }
@@ -93,6 +104,13 @@ export async function initGame() {
     console.log('Asset registry loaded, version:', registry.version);
 
     initializeAllSystems(registry);
+
+    const recentSave = await loadMostRecentSave();
+
+    if (recentSave) {
+      console.log('Loading most recent save...');
+      GameManager.loadGameState(recentSave);
+    }
   } catch (error) {
     console.error('Could not load or parse asset registry:', error);
     document.body.innerHTML = '<div style="color:red; text-align:center; padding-top:50px;"><h1>Error</h1><p>Failed to load critical game assets. Please check the console.</p></div>';

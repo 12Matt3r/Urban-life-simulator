@@ -1,0 +1,344 @@
+{
+  "modules": {
+    "configuration": {
+      "file": "src/config.js",
+      "status": "complete",
+      "description": "Central configuration for WebSim modules and security settings",
+      "dependencies": []
+    },
+    "auth": {
+      "file": "src/utils/auth.js",
+      "status": "complete",
+      "description": "Supabase authentication layer with sign up/in/out and session management",
+      "dependencies": [
+        "@supabase/supabase-js",
+        "src/config.js"
+      ]
+    },
+    "database": {
+      "file": "src/utils/db.js",
+      "status": "complete",
+      "description": "Database operations for profiles, stats, achievements, and transcripts",
+      "dependencies": [
+        "src/utils/auth.js"
+      ]
+    },
+    "storage": {
+      "file": "src/utils/storage.js",
+      "status": "complete",
+      "description": "Save/load system with autosave and transcript export",
+      "dependencies": [
+        "src/utils/auth.js"
+      ]
+    },
+    "security": {
+      "file": "src/utils/security.js",
+      "status": "complete",
+      "description": "Security utilities for origin validation and sanitization",
+      "dependencies": [
+        "src/config.js"
+      ]
+    },
+    "iframe_manager": {
+      "file": "src/core/IframeManager.js",
+      "status": "complete",
+      "description": "Secure WebSim module loader with message routing",
+      "dependencies": [
+        "src/config.js"
+      ]
+    },
+    "game_manager": {
+      "file": "src/systems/game.js",
+      "status": "enhanced",
+      "description": "Core game state with Supabase integration",
+      "dependencies": [
+        "src/utils/db.js",
+        "src/utils/storage.js"
+      ],
+      "enhancements": [
+        "Decision recording",
+        "Narrative logging",
+        "Tutorial completion tracking",
+        "Monkey Paw award system",
+        "Save/load state methods",
+        "5-minute autosave timer"
+      ]
+    },
+    "asset_manager": {
+      "file": "src/systems/asset_manager.js",
+      "status": "stable",
+      "description": "Asset loading and caching"
+    },
+    "audio": {
+      "file": "src/systems/audio.js",
+      "status": "legacy_global",
+      "description": "Audio system (needs ESM refactor)"
+    },
+    "scene_manager": {
+      "file": "src/systems/scene_manager.js",
+      "status": "legacy_global",
+      "description": "Scene/background management (needs ESM refactor)"
+    },
+    "narrative": {
+      "file": "src/systems/narrative.js",
+      "status": "legacy_global",
+      "description": "Narrative sequence system (needs ESM refactor and WebSim integration)"
+    },
+    "ads": {
+      "file": "src/systems/ads.js",
+      "status": "legacy_global",
+      "description": "Ad system placeholder"
+    },
+    "hud": {
+      "file": "src/ui/hud.js",
+      "status": "legacy_global",
+      "description": "HUD display"
+    },
+    "radio": {
+      "file": "src/ui/radio.js",
+      "status": "legacy_global",
+      "description": "Radio UI (needs WebSim integration)"
+    },
+    "shop": {
+      "file": "src/ui/shop.js",
+      "status": "legacy_global",
+      "description": "Shop UI"
+    },
+    "credits": {
+      "file": "src/ui/credits.js",
+      "status": "legacy_global",
+      "description": "Credits screen"
+    },
+    "assets_loader": {
+      "file": "src/assets-loader.js",
+      "status": "enhanced",
+      "description": "Game initialization with auth and save loading",
+      "dependencies": [
+        "src/utils/auth.js",
+        "src/utils/storage.js",
+        "src/config.js"
+      ],
+      "enhancements": [
+        "Supabase initialization",
+        "Anonymous sign-in on first load",
+        "Automatic recent save loading"
+      ]
+    },
+    "main": {
+      "file": "src/main.js",
+      "status": "stable",
+      "description": "Application entry point"
+    }
+  },
+  "websim_modules": {
+    "living_hell_viewer": {
+      "url": "https://websim.com/p/38_6u3p4dbv2s0ld6htn",
+      "status": "configured",
+      "integration_status": "pending",
+      "description": "Living Hell visualization module"
+    },
+    "dreamworld": {
+      "url": "https://websim.com/p/38_6u3p4dbv2s0ld6htn",
+      "status": "configured",
+      "integration_status": "pending",
+      "description": "Dreamworld realm module"
+    },
+    "sfx_host": {
+      "url": "https://websim.com/p/ef_a_5z1s700iqy97qk4",
+      "status": "configured",
+      "integration_status": "pending",
+      "description": "Sound effects host"
+    },
+    "radio": {
+      "url": "https://websim.com/@SOFAKINGSADBOI/web-page-with-google-fonts-and-custom-styles",
+      "status": "configured",
+      "integration_status": "pending",
+      "description": "Radio interface"
+    },
+    "coin_engine": {
+      "url": "https://websim.com/p/2p3b0jkt2z3jb2z1wybu",
+      "status": "configured",
+      "integration_status": "pending",
+      "description": "Economy/coin system"
+    },
+    "narrator_api": {
+      "url": "https://websim.com/p/i9x6aq89xvbcb35oah3o",
+      "status": "configured",
+      "integration_status": "pending",
+      "description": "Base narrator API"
+    },
+    "pg13_narrator": {
+      "url": "https://websim.com/@sofakingsadboi/uls-narrator-api-pg-13",
+      "status": "configured",
+      "integration_status": "pending",
+      "description": "PG-13 narrator variant"
+    },
+    "adult_narrator": {
+      "url": "https://websim.com/@sofakingsadboi/uls-narrator-adult",
+      "status": "configured",
+      "integration_status": "pending",
+      "description": "Adult narrator variant"
+    },
+    "autopilot": {
+      "url": "https://websim.com/p/ukaq5c09ts4t3_uw9vzb",
+      "status": "configured",
+      "integration_status": "pending",
+      "description": "AI autopilot system"
+    },
+    "trippy_cam": {
+      "url": "https://websim.com/p/xcsq1ou_j7g_1gr0l1iw",
+      "status": "configured",
+      "integration_status": "pending",
+      "description": "Visual effects camera"
+    },
+    "monkey_paw": {
+      "url": "https://websim.com/p/7qg637rv4g5cqzmhqeux",
+      "status": "configured",
+      "integration_status": "pending",
+      "description": "Monkey Paw special item system"
+    }
+  },
+  "database_tables": {
+    "players": {
+      "status": "created",
+      "rls": "enabled",
+      "policies": 3,
+      "description": "User profiles and preferences"
+    },
+    "game_saves": {
+      "status": "created",
+      "rls": "enabled",
+      "policies": 4,
+      "indexes": 2,
+      "description": "Game state snapshots"
+    },
+    "transcripts": {
+      "status": "created",
+      "rls": "enabled",
+      "policies": 4,
+      "indexes": 2,
+      "description": "Narrative session recordings"
+    },
+    "player_stats": {
+      "status": "created",
+      "rls": "enabled",
+      "policies": 3,
+      "indexes": 1,
+      "description": "Achievements and progress tracking"
+    }
+  },
+  "tests": {
+    "e2e_core_systems": {
+      "file": "e2e_tests/verify_core_systems.js",
+      "status": "created",
+      "coverage": [
+        "Configuration validation",
+        "Auth system structure",
+        "Storage operations",
+        "Database operations",
+        "IframeManager functionality",
+        "Security utilities",
+        "GameManager state management"
+      ]
+    }
+  },
+  "next_sprint_priorities": [
+    {
+      "priority": "high",
+      "task": "Wire narrator API for dynamic story generation",
+      "module": "narrative",
+      "dependencies": [
+        "iframe_manager",
+        "pg13_narrator",
+        "adult_narrator"
+      ]
+    },
+    {
+      "priority": "high",
+      "task": "Connect coin engine for economy system",
+      "module": "coin_engine",
+      "dependencies": [
+        "iframe_manager",
+        "game_manager"
+      ]
+    },
+    {
+      "priority": "high",
+      "task": "Activate autopilot for AI-driven gameplay",
+      "module": "autopilot",
+      "dependencies": [
+        "iframe_manager",
+        "narrative"
+      ]
+    },
+    {
+      "priority": "medium",
+      "task": "Refactor narrative system to ES modules",
+      "module": "narrative",
+      "dependencies": []
+    },
+    {
+      "priority": "medium",
+      "task": "Add save/load UI menu",
+      "module": "new_ui_component",
+      "dependencies": [
+        "storage"
+      ]
+    },
+    {
+      "priority": "medium",
+      "task": "Create transcript viewer UI",
+      "module": "new_ui_component",
+      "dependencies": [
+        "database",
+        "storage"
+      ]
+    },
+    {
+      "priority": "low",
+      "task": "Implement multiplayer ghost system",
+      "module": "new_system",
+      "dependencies": [
+        "database",
+        "auth"
+      ]
+    }
+  ],
+  "known_issues": [
+    {
+      "severity": "medium",
+      "description": "WebSim modules configured but not actively loaded",
+      "affected_modules": [
+        "all_websim_modules"
+      ],
+      "solution": "Complete iframe loading in UI components"
+    },
+    {
+      "severity": "medium",
+      "description": "Narrative system uses legacy global scope pattern",
+      "affected_modules": [
+        "narrative",
+        "audio",
+        "scene_manager",
+        "ads"
+      ],
+      "solution": "Refactor to ES modules"
+    },
+    {
+      "severity": "low",
+      "description": "Tutorial completion not automatically detected",
+      "affected_modules": [
+        "narrative"
+      ],
+      "solution": "Add event listener for tutorial end"
+    },
+    {
+      "severity": "low",
+      "description": "E2E tests require manual verification",
+      "affected_modules": [
+        "e2e_tests"
+      ],
+      "solution": "Set up CI/CD with real Supabase test instance"
+    }
+  ]
+}
