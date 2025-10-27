@@ -495,7 +495,7 @@
 </script>
 
 <!-- ====== SYSTEMS ====== -->
-<script src="src/systems/NarrativeManager.js"></script>
+<script type="module" src="src/systems/NarrativeManager.js"></script>
 <script src="src/systems/TutorialController.js"></script>
 
 <!-- ====== UI ====== -->
@@ -536,6 +536,7 @@
       <button onclick="__app.router.go('living-hell');document.getElementById('menu').remove()">Living Hell</button>
       <button onclick="__app.router.go('dreamworld');document.getElementById('menu').remove()">Dreamworld</button>
       <button onclick="__app.router.go('backrooms');document.getElementById('menu').remove()">Backrooms</button>
+      <button onclick="window.openSaveLoadMenu()">Save & Load</button>
       <button onclick="eventBus.publish('credits.show')">Credits</button>`;
       document.body.appendChild(d);
     }
@@ -711,6 +712,71 @@
     document.getElementById('char').remove();
     __app.router.go('uls');
   }
+})();
+</script>
+
+<!-- ====== SAVE/LOAD UI ====== -->
+<script>
+(function() {
+  let saveLoadModal = null;
+
+  function openSaveLoadMenu() {
+    if (saveLoadModal) {
+      saveLoadModal.remove();
+    }
+
+    saveLoadModal = document.createElement('div');
+    saveLoadModal.id = 'save-load-menu';
+    saveLoadModal.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#111;color:#fff;padding:16px;border-radius:12px;z-index:100000;min-width:400px;';
+
+    saveLoadModal.innerHTML = `
+      <h3>Save & Load Game</h3>
+      <p style="font-size:12px;opacity:0.7;">Save your progress to a code that you can load later.</p>
+
+      <div style="margin:12px 0;">
+        <button id="generate-code-btn">Generate Save Code</button>
+        <textarea id="save-code-textarea" style="width:100%;height:80px;margin-top:8px;background:#0c0c0c;color:#fff;border:1px solid #333;border-radius:8px;" readonly></textarea>
+      </div>
+
+      <div style="margin:12px 0;">
+        <label for="load-code-input">Paste your save code to load:</label>
+        <textarea id="load-code-input" style="width:100%;height:80px;margin-top:8px;background:#0c0c0c;color:#fff;border:1px solid #333;border-radius:8px;"></textarea>
+        <button id="load-code-btn" style="margin-top:8px;">Load from Code</button>
+      </div>
+
+      <button id="close-save-load-btn" style="margin-top:16px;">Close</button>
+    `;
+
+    document.body.appendChild(saveLoadModal);
+
+    // Event Listeners
+    document.getElementById('generate-code-btn').addEventListener('click', () => {
+      const code = storage.exportToCode();
+      if (code) {
+        document.getElementById('save-code-textarea').value = code;
+        eventBus.publish('hud.toast', { text: 'Save code generated!' });
+      } else {
+        eventBus.publish('hud.toast', { text: 'Error: Could not generate save code.' });
+      }
+    });
+
+    document.getElementById('load-code-btn').addEventListener('click', () => {
+      const code = document.getElementById('load-code-input').value;
+      if (code) {
+        if (storage.importFromCode(code)) {
+          saveLoadModal.remove(); // Close on successful load
+        }
+      } else {
+        eventBus.publish('hud.toast', { text: 'Please paste a save code.' });
+      }
+    });
+
+    document.getElementById('close-save-load-btn').addEventListener('click', () => {
+      saveLoadModal.remove();
+    });
+  }
+
+  window.openSaveLoadMenu = openSaveLoadMenu;
 })();
 </script>
 

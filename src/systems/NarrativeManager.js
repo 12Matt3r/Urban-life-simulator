@@ -1,20 +1,22 @@
-/*
-Loads and manages narrative data from JSON files.
-*/
-const NarrativeManager = {
-  init() {
-    global.eventBus.subscribe('NARRATIVE_START', (narrativeId) => this.loadNarrative(narrativeId));
-  },
+/**
+ * @file src/systems/NarrativeManager.js
+ * @description Loads and manages narrative data from JSON files.
+ */
+import { eventBus } from './bus.js';
+
+class NarrativeManager {
+  constructor() {
+    eventBus.subscribe('NARRATIVE_START', (narrativeId) => this.loadNarrative(narrativeId));
+  }
 
   loadNarrative(narrativeId) {
     fetch(`narratives/${narrativeId}.json`)
       .then(response => response.json())
       .then(data => {
-        global.eventBus.publish('NARRATIVE_LOADED', data);
+        eventBus.publish('NARRATIVE_LOADED', data);
       })
       .catch(error => console.error('Error loading narrative:', error));
   }
-};
+}
 
-NarrativeManager.init();
-window.global.narrativeManager = NarrativeManager;
+export const narrativeManager = new NarrativeManager();
