@@ -1,22 +1,17 @@
-const ULS_CONFIG = {
-    NARRATOR_PG13_URL: 'https://replit.com/@Gareth-B-T/Uls-Narrator-Api-Pg13',
-    NARRATOR_ADULT_URL: 'https://replit.com/@Gareth-B-T/Uls-Narrator-Api-Adult',
-    NARRATOR_AUTOPILOT_URL: 'https://replit.com/@Gareth-B-T/Uls-Narrator-Api',
-    IMAGE_RENDER_URL: 'https://replit.com/@Gareth-B-T/Dall-E-Image-Generator',
-    DND_URL: 'https://replit.com/@Gareth-B-T/ultimate-nerd-championships',
-    MONKEYPAW_URL: 'https://replit.com/@Gareth-B-T/monkey-paw-for-uls',
-    CREDITS_URL: 'https://replit.com/@gareth-b-t/uls-credits',
-    RADIO_STATIONS: [
-      { name: 'Cozy FM (Lofi)', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/lofi-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/lofi-2.mp3'] },
-      { name: 'Viva La Disco (Latin)', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/latin-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/latin-2.mp3'] },
-      { name: 'Bassface FM (Dubstep)', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/dubstep-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/dubstep-2.mp3'] },
-      { name: 'Hip Hop on the Block', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/hiphop-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/hiphop-2.mp3'] },
-      { name: 'BackFORTYdrip (Country)', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/country-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/country-2.mp3'] },
-      { name: 'Mosh Pit FM (Metal)', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/metal-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/metal-2.mp3'] },
-      { name: 'Notebook FM (Talk)', tracks: ['https://file.garden/ZelGSoL1Uv3xZ2Cj/talk-1.mp3', 'https://file.garden/ZelGSoL1Uv3xZ2Cj/talk-2.mp3'] }
-    ],
-    SFX_DING: '',
-    SFX_BUZZ: ''
-  };
+/**
+ * @file src/config.js
+ * @description Central configuration for WebSim modules and security settings.
+ */
 
-  export default ULS_CONFIG;
+export const ULS_CONFIG = {
+  RADIO_IFRAME_URL: "https://websim.com/@SOFAKINGSADBOI/web-page-with-google-fonts-and-custom-styles",
+  IMAGE_RENDER_URL: "https://websim.com/p/ef_a_5z1s700iqy97qk4",
+  MONKEYPAW_URL: "https://websim.com/p/7qg637rv4g5cqzmhqeux",
+  PRIMARY_NARRATOR: "https://websim.com/@sofakingsadboi/uls-narrator-api-pg-13",
+  AUTOPILOT_URL: "https://websim.com/p/ukaq5c09ts4t3_uw9vzb",
+  HELL_VIEWER_URL: "https://websim.com/p/38_6u3p4dbv2s0ld6htn",
+  COIN_ENGINE_URL: "https://websim.com/p/2p3b0jkt2z3jb2z1wybu"
+};
+
+// Expose to window for legacy scripts and debugging, but encourage module imports.
+window.ULS_CONFIG = ULS_CONFIG;

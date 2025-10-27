@@ -39,32 +39,7 @@
 <body>
 
 <!-- ====== CONFIG ====== -->
-<script>
-  window.ULS_CONFIG = {
-    // Narrators
-    NARRATOR_PG13_URL      : 'https://websim.com/@SOFAKINGSADBOI/uls-narrator-api-pg-13',
-    NARRATOR_ADULT_URL     : 'https://websim.com/@SOFAKINGSADBOI/uls-narrator-adult-mode',
-    NARRATOR_AUTOPILOT_URL : 'https://websim.com/@SOFAKINGSADBOI/narrator-api',
-
-    // Image Generator (WebSim)
-    IMAGE_RENDER_URL       : 'https://websim.com/@SOFAKINGSADBOI/simple-image-generator',
-
-    // Radio (single iframe app)
-    RADIO_IFRAME_URL       : 'https://websim.com/@SOFAKINGSADBOI/web-page-with-google-fonts-and-custom-styles',
-    AUTOPILOT_URL : "https://websim.com/p/ukaq5c09ts4t3_uw9vzb",
-
-    // Jobs / Modules
-    DND_URL                : 'https://websim.com/@SOFAKINGSADBOI/ultimate-nerd-championships',
-    MONKEYPAW_URL          : 'https://websim.com/p/7qg637rv4g5cqzmhqeux',
-
-    // Credits (update when final)
-    CREDITS_URL            : 'https://your.video.host/credits.html',
-
-    // Optional SFX (hosted in SFX WebSim)
-    SFX_DING               : 'https://ef_a_5z1s700iqy97qk4.c.websim.com/succsess.wav',
-    SFX_BUZZ               : 'https://ef_a_5z1s700iqy97qk4.c.websim.com/failure.mp3'
-  };
-</script>
+<script type="module" src="src/config.js"></script>
 
 <!-- ====== STAGE ====== -->
 <div id="stage"><img class="img" id="stage-img" alt="" /></div>
@@ -143,91 +118,21 @@
 })();
 </script>
 
-<!-- ====== IMAGE RENDER BRIDGE (WebSim) ====== -->
-<script>
-(function(){
-  let iframe=null;
-  function ensure(){
-    if(iframe) return;
-    iframe=document.createElement('iframe'); iframe.src=ULS_CONFIG.IMAGE_RENDER_URL; iframe.style.display='none'; document.body.appendChild(iframe);
-    window.addEventListener('message', onMsg);
-  }
-  function onMsg(e){
-    if (!e.origin.includes('websim.com')) return;
-    if(!e.data||!e.data.image) return;
-    const img = document.getElementById('stage-img');
-    if(e.data.image?.dataUrl){ img.src = e.data.image.dataUrl; }
-    if(e.data.image?.url){ img.src = e.data.image.url; }
-  }
-  eventBus.subscribe('image.request', p=>{
-    ensure();
-    const payload = { prompt:p.prompt, style:p.style||'cinematic neon city' };
-    iframe.contentWindow.postMessage({ from:'uls', type:'image.request', payload }, '*');
-  });
-})();
-</script>
+<!-- ====== CORE SYSTEMS ====== -->
+<script type="module" src="src/core/IframeManager.js"></script>
 
-<!-- ====== NARRATOR BRIDGE (PG-13/ADULT) & AUTOPILOT ====== -->
-<script>
-(function(){
-  let iframe=null, ready=false, waitQ=[];
-  function ensure(url){
-    if(iframe){ if(iframe.src!==url) iframe.src=url; return; }
-    iframe=document.createElement('iframe'); iframe.style.display='none'; iframe.src=url; document.body.appendChild(iframe);
-    window.addEventListener('message', onMsg);
-  }
-  function onMsg(e){
-    if (!e.origin.includes('websim.com')) return;
-    const d=e.data;
-    if(!d||!d.narrator) return;
-    if(d.type==='ready'){ ready=true; waitQ.forEach(f=>f()); waitQ.length=0; }
-    if(d.type==='response'){ eventBus.publish('narrator.response', d.payload); }
-    if(d.type==='autopilot.suggestion'){ eventBus.publish('narrator.autopilot.suggestion', d.payload); }
-    if(d.type==='coin.result'){ eventBus.publish('coin.result', d.payload); }
-  }
-  function send(payload){
-    if(!iframe) return;
-    iframe.contentWindow.postMessage({ from:'uls', payload }, '*');
-  }
-  eventBus.subscribe('narrator.ask', payload=>{
-    const url = __app.player.adult ? ULS_CONFIG.NARRATOR_ADULT_URL : ULS_CONFIG.NARRATOR_PG13_URL;
-    ensure(url);
-    const go=()=>send({type:'ask', data:payload});
-    if(!ready) waitQ.push(go); else go();
-  });
-  // autopilot suggestions
-  eventBus.subscribe('narrator.autopilot.suggestAction', payload=>{
-    const url = ULS_CONFIG.AUTOPILOT_URL;
-    ensure(url);
-    const go=()=>send({type:'autopilot.suggest', data:payload});
-    if(!ready) waitQ.push(go); else go();
-  });
-  // proxy coin flips to narrator if desired
-  eventBus.subscribe('coin.flip', payload=>{
-    const url = __app.player.adult ? ULS_CONFIG.NARRATOR_ADULT_URL : ULS_CONFIG.NARRATOR_PG13_URL;
-    ensure(url);
-    const go=()=>send({type:'coin.flip', data:payload});
-    if(!ready) waitQ.push(go); else go();
-  });
-})();
-</script>
 
 <!-- ====== COIN ENGINE + DOUBLE OR NOTHING + SFX ====== -->
 <script>
 (function(){
   const DNU = { count:0, locked:false, season:1 };
-  function flipOnce(diff){ const p = diff==='easy'?0.65 : diff==='hard'?0.35 : 0.5; return Math.random()<p; }
-  function resolve(payload){
-    const diff = payload?.difficulty || 'even';
-    const success = flipOnce(diff);
-    const dmg = success? 0 : (payload?.failDamage || 10);
-    const reward = success? (payload?.reward||10) : 0;
+
+  eventBus.subscribe('coin.result', (payload) => {
+    const { success, diff, dmg, reward } = payload;
     if(success) playDing(); else playBuzz();
     if(reward) eventBus.publish('stats.update',{ money: __app.stats.money + reward });
     if(dmg) eventBus.publish('stats.update',{ health: Math.max(0,__app.stats.health - dmg) });
-    eventBus.publish('coin.result',{ success, diff, dmg, reward });
-  }
-  eventBus.subscribe('coin.flip', resolve);
+  });
 
   // DoN policy: after you invoke DoN once, you may chain one more (then lock until season advance)
   eventBus.subscribe('coin.doubleOrNothing', ()=>{
@@ -404,7 +309,6 @@
     document.body.appendChild(w);
   });
   window.addEventListener('message', e=>{
-    if (!e.origin.includes('websim.com')) return;
     const d=e.data||{};
     if(d.source==='uls-dnd' && d.type==='win'){
       const prize = Number.isFinite(d.prize) ? d.prize : 150;
@@ -433,7 +337,6 @@
     }
   }
   function onMsg(e){
-    if (!e.origin.includes('websim.com')) return;
     const d=e.data;
     if(!d||!d.type) return;
     if(d.type==='monkeypaw.ready'){ Paw.active=true; eventBus.publish('hud.toast',{text:'Monkey Paw is listening… (wishes left: '+Paw.wishes+')'}); }
@@ -777,15 +680,6 @@
     if(t.startsWith('heat')){ // heat 2
       const amt = parseInt(t.split(' ')[1] || '1', 10);
       eventBus.publish('heat.add', { amount: isNaN(amt) ? 1 : amt });
-      return;
-    }
-
-    // Radio commands: radio play | pause | next | prev | shuffle
-    if(t.startsWith('radio ')){
-      const cmd = t.split(' ')[1];
-      if(__app.radio && typeof __app.radio[cmd] === 'function'){
-        __app.radio[cmd]();
-      }
       return;
     }
 
