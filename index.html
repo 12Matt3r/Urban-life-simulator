@@ -106,17 +106,7 @@
 
 <!-- ====== RADIO ====== -->
 <script src="src/systems/Radio.js"></script>
-<script>
-(function(){
-  const dingEl=document.getElementById('sfx-ding');
-  const buzzEl=document.getElementById('sfx-buzz');
-  // load SFX if provided
-  if(ULS_CONFIG.SFX_DING) dingEl.src=ULS_CONFIG.SFX_DING;
-  if(ULS_CONFIG.SFX_BUZZ) buzzEl.src=ULS_CONFIG.SFX_BUZZ;
-  window.playDing = ()=>{ if(dingEl.src) dingEl.play(); };
-  window.playBuzz = ()=>{ if(buzzEl.src) buzzEl.play(); };
-})();
-</script>
+<script type="module" src="src/systems/audio.js"></script>
 
 <!-- ====== CORE SYSTEMS ====== -->
 <script type="module" src="src/core/IframeManager.js"></script>
@@ -224,16 +214,6 @@
   tray.innerHTML='<b>Transcript</b><div id="transcript-body" style="margin-top:6px"></div>';
   document.body.appendChild(tray);
 
-  const controls=document.createElement('div');
-  controls.style.cssText='position:fixed;right:12px;bottom:60px;background:rgba(0,0,0,.5);color:#fff;padding:6px;border-radius:8px;z-index:9999;display:flex;gap:6px;flex-wrap:wrap';
-  controls.innerHTML=`
-    <button onclick="Save.export()">Export</button>
-    <button onclick="Save.saveSlot(0,'Slot 1')">Save1</button><button onclick="Save.loadSlot(0)">Load1</button>
-    <button onclick="Save.saveSlot(1,'Slot 2')">Save2</button><button onclick="Save.loadSlot(1)">Load2</button>
-    <button onclick="document.getElementById('transcript').style.display =
-      (document.getElementById('transcript').style.display==='none'?'block':'none')">Transcript</button>`;
-  document.body.appendChild(controls);
-
   function renderTranscript(list){
     const body=document.getElementById('transcript-body'); if(!body) return;
     body.innerHTML='';
@@ -253,6 +233,11 @@
   eventBus.subscribe('transcript.reset', list=>renderTranscript(list));
   eventBus.subscribe('transcript.append', t=>renderTranscript(Save.cur.log));
   renderTranscript(Save.cur.log);
+
+  window.toggleTranscript = function() {
+    const transcript = document.getElementById('transcript');
+    transcript.style.display = transcript.style.display === 'none' ? 'block' : 'none';
+  };
 })();
 </script>
 
@@ -537,6 +522,7 @@
       <button onclick="__app.router.go('dreamworld');document.getElementById('menu').remove()">Dreamworld</button>
       <button onclick="__app.router.go('backrooms');document.getElementById('menu').remove()">Backrooms</button>
       <button onclick="window.openSaveLoadMenu()">Save & Load</button>
+      <button onclick="window.toggleTranscript()">View Transcript</button>
       <button onclick="eventBus.publish('credits.show')">Credits</button>`;
       document.body.appendChild(d);
     }
