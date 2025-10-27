@@ -51,6 +51,7 @@
 
     // Radio (single iframe app)
     RADIO_IFRAME_URL       : 'https://websim.com/@SOFAKINGSADBOI/web-page-with-google-fonts-and-custom-styles',
+    AUTOPILOT_URL : "https://websim.com/p/ukaq5c09ts4t3_uw9vzb",
 
     // Jobs / Modules
     DND_URL                : 'https://websim.com/@SOFAKINGSADBOI/ultimate-nerd-championships',
@@ -152,6 +153,7 @@
     window.addEventListener('message', onMsg);
   }
   function onMsg(e){
+    if (!e.origin.includes('websim.com')) return;
     if(!e.data||!e.data.image) return;
     const img = document.getElementById('stage-img');
     if(e.data.image?.dataUrl){ img.src = e.data.image.dataUrl; }
@@ -175,6 +177,7 @@
     window.addEventListener('message', onMsg);
   }
   function onMsg(e){
+    if (!e.origin.includes('websim.com')) return;
     const d=e.data;
     if(!d||!d.narrator) return;
     if(d.type==='ready'){ ready=true; waitQ.forEach(f=>f()); waitQ.length=0; }
@@ -194,7 +197,7 @@
   });
   // autopilot suggestions
   eventBus.subscribe('narrator.autopilot.suggestAction', payload=>{
-    const url = ULS_CONFIG.NARRATOR_AUTOPILOT_URL || ( __app.player.adult ? ULS_CONFIG.NARRATOR_ADULT_URL : ULS_CONFIG.NARRATOR_PG13_URL );
+    const url = ULS_CONFIG.AUTOPILOT_URL;
     ensure(url);
     const go=()=>send({type:'autopilot.suggest', data:payload});
     if(!ready) waitQ.push(go); else go();
@@ -401,6 +404,7 @@
     document.body.appendChild(w);
   });
   window.addEventListener('message', e=>{
+    if (!e.origin.includes('websim.com')) return;
     const d=e.data||{};
     if(d.source==='uls-dnd' && d.type==='win'){
       const prize = Number.isFinite(d.prize) ? d.prize : 150;
@@ -429,6 +433,7 @@
     }
   }
   function onMsg(e){
+    if (!e.origin.includes('websim.com')) return;
     const d=e.data;
     if(!d||!d.type) return;
     if(d.type==='monkeypaw.ready'){ Paw.active=true; eventBus.publish('hud.toast',{text:'Monkey Paw is listening… (wishes left: '+Paw.wishes+')'}); }
@@ -772,6 +777,15 @@
     if(t.startsWith('heat')){ // heat 2
       const amt = parseInt(t.split(' ')[1] || '1', 10);
       eventBus.publish('heat.add', { amount: isNaN(amt) ? 1 : amt });
+      return;
+    }
+
+    // Radio commands: radio play | pause | next | prev | shuffle
+    if(t.startsWith('radio ')){
+      const cmd = t.split(' ')[1];
+      if(__app.radio && typeof __app.radio[cmd] === 'function'){
+        __app.radio[cmd]();
+      }
       return;
     }
 
