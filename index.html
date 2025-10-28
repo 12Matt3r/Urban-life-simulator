@@ -84,25 +84,8 @@
   };
 </script>
 
-<!-- ====== HUD / TOASTS ====== -->
-<script>
-(function(){
-  function setBar(cls, v){ v=Math.max(0,Math.min(100,v)); document.querySelector('.bar.'+cls+' > i').style.width=v+'%';}
-  function setHUD(stats){
-    setBar('health', stats.health);
-    setBar('sanity', stats.sanity);
-    setBar('money',  Math.min(100, Math.floor(stats.money/10)));
-    setBar('fame',   Math.min(100, stats.fame));
-    setBar('heat',   Math.min(100, stats.heat*20)); // 0..5 → 0..100
-  }
-  eventBus.subscribe('stats.update', p=>{ Object.assign(__app.stats, p||{}); setHUD(__app.stats); });
-  eventBus.subscribe('hud.toast', p=>{
-    const d=document.createElement('div'); d.className='toast'; d.textContent=p.text||'';
-    document.getElementById('toasts').appendChild(d); setTimeout(()=>d.remove(), 3000);
-  });
-  setHUD(__app.stats);
-})();
-</script>
+<!-- ====== UI ====== -->
+<script type="module" src="src/ui/hud.js"></script>
 
 <!-- ====== RADIO ====== -->
 <script src="src/systems/Radio.js"></script>
@@ -110,6 +93,7 @@
 
 <!-- ====== CORE SYSTEMS ====== -->
 <script type="module" src="src/core/IframeManager.js"></script>
+<script type="module" src="src/core/TutorialController.js"></script>
 
 
 <!-- ====== COIN ENGINE + DOUBLE OR NOTHING + SFX ====== -->
@@ -259,228 +243,10 @@
 })();
 </script>
 
-<!-- ====== ECONOMY ====== -->
-<script>
-(function(){
-  window.Shop={ buy(name, cost){ if(__app.stats.money<cost) return eventBus.publish('hud.toast',{text:'Not enough money.'});
-    eventBus.publish('stats.update',{money:__app.stats.money-cost}); eventBus.publish('hud.toast',{text:'Bought '+name}); } };
-})();
-</script>
-
-<!-- ====== DND JOB (iframe) ====== -->
-<script>
-(function(){
-  eventBus.subscribe('job.dnd.start', ()=>{
-    const w=document.createElement('div'); w.id='dnd-host'; w.style.cssText='position:fixed;inset:5%;background:#000;z-index:99999';
-    w.innerHTML='<iframe id="dnd-frame" src="'+ULS_CONFIG.DND_URL+'" style="width:100%;height:100%;border:0"></iframe><button style="position:absolute;right:8px;top:8px" onclick="document.getElementById(\'dnd-host\').remove()">Exit</button>';
-    document.body.appendChild(w);
-  });
-  window.addEventListener('message', e=>{
-    const d=e.data||{};
-    if(d.source==='uls-dnd' && d.type==='win'){
-      const prize = Number.isFinite(d.prize) ? d.prize : 150;
-      eventBus.publish('stats.update',{money: __app.stats.money+prize});
-      eventBus.publish('hud.toast',{text:`DND Tournament Won! +$${prize}`});
-      document.getElementById('dnd-host')?.remove();
-    }
-    if(d.source==='uls-dnd' && d.type==='exit'){
-      document.getElementById('dnd-host')?.remove();
-    }
-  });
-})();
-</script>
-
-<!-- ====== MONKEY PAW (item + iframe grants) ====== -->
-<script>
-(function(){
-  const Paw={ wishes:5, active:false, iframe:null };
-  function openPaw(){
-    if(!Paw.iframe){
-      const w=document.createElement('div'); w.id='paw-host'; w.style.cssText='position:fixed;inset:10%;background:#000;z-index:99999';
-      w.innerHTML='<iframe id="paw-iframe" src="'+ULS_CONFIG.MONKEYPAW_URL+'" style="width:100%;height:100%;border:0"></iframe><button style="position:absolute;right:10px;top:10px" onclick="document.getElementById(\'paw-host\').remove();">Close</button>';
-      document.body.appendChild(w);
-      Paw.iframe = document.getElementById('paw-iframe');
-      window.addEventListener('message', onMsg);
-    }
-  }
-  function onMsg(e){
-    const d=e.data;
-    if(!d||!d.type) return;
-    if(d.type==='monkeypaw.ready'){ Paw.active=true; eventBus.publish('hud.toast',{text:'Monkey Paw is listening… (wishes left: '+Paw.wishes+')'}); }
-    if(d.type==='monkeypaw.grant' && Paw.wishes>0){
-      Paw.wishes--;
-      // typical payload: { type:'money', amount:100 } OR { type:'fame', amount:5 } etc.
-      const g=d.payload||{};
-      if(g.type==='money') eventBus.publish('stats.update',{money:__app.stats.money+(g.amount||100)});
-      if(g.type==='fame')  eventBus.publish('stats.update',{fame:Math.min(100,__app.stats.fame+(g.amount||3))});
-      if(g.type==='health')eventBus.publish('stats.update',{health:Math.min(100,__app.stats.health+(g.amount||10))});
-      // inevitable curse:
-      setTimeout(()=>{ eventBus.publish('hud.toast',{text:'The Paw takes its price…'}); eventBus.publish('stats.update',{sanity:Math.max(0,__app.stats.sanity-15)}); }, 800);
-      eventBus.publish('hud.toast',{text:'Wish granted. ('+Paw.wishes+' left)'});
-    }
-  }
-
-  eventBus.subscribe('monkeypaw.pickup', ()=>{
-    Paw.active=true;
-    eventBus.publish('hud.toast',{text:'You found the Monkey Paw (5 wishes). Type: wish money 500 / wish fame 5 / etc.'});
-  });
-  eventBus.subscribe('monkeypaw.open', openPaw);
-  window.MonkeyPaw={ open:openPaw };
-})();
-</script>
-
-<!-- ====== SYSTEMS ====== -->
-<script type="module" src="src/systems/realms.js"></script>
-
-<!-- ====== BACKROOMS ====== -->
-<script>
-(function(){
-  const BR = {
-    enter(){
-      __app.realm='backrooms';
-      eventBus.publish('image.request',{prompt:'liminal yellow hallways, damp carpet, humming lights, endless maze'});
-      __app.gameManager.commitTurn({ realm:'backrooms', text:'You slipped through a glitch. Move carefully.', decisions:[{text:'listen'},{text:'run'},{text:'mark a wall'}] });
-    }
-  };
-  eventBus.subscribe('applyDecision', a=>{
-    if(__app.realm!=='backrooms') return;
-    eventBus.publish('narrator.ask',{ realm:'backrooms', prompt:a.text, history:__app.history });
-  });
-  __app.router.register('backrooms', BR);
-})();
-</script>
-
-<!-- ====== CITY (ULS) ====== -->
-<script>
-(function(){
-  const ULS = {
-    enter(){
-      eventBus.publish('image.request',{prompt:'nighttime neon-splashed megacity streets, Tokyo x New York mashup, rain-slick, crowds and signage'});
-      eventBus.publish('hud.toast',{text:'Welcome to Chroma City.'});
-      ULS.prompt();
-    },
-    prompt(){
-      const q = "Where to? [explore • take a gig • rest • shop • rideshare • DND tournament • switch realm]";
-      const decisions = [
-        {text:'explore district'},{text:'take a gig'},{text:'rest at apartment'},{text:'shop'},
-        {text:'take a rideshare job'},{text:'enter DND tournament'},{text:'switch realm'}
-      ];
-      __app.gameManager.commitTurn({ realm:'uls', text:q, decisions });
-    }
-  };
-  eventBus.subscribe('applyDecision', a=>{
-    if(__app.realm!=='uls') return;
-    const t=(a.text||'').toLowerCase();
-    if(t.includes('explore')){ eventBus.publish('image.request',{prompt:'neon market district, crowds, signage, rainy reflections'}); ask('explore'); }
-    else if(t.includes('gig')){ ask('gig'); }
-    else if(t.includes('rest')){ eventBus.publish('image.request',{prompt:'small city apartment interior, cozy neon window glow'}); ask('rest'); eventBus.publish('rest.sober'); }
-    else if(t.includes('shop')){ ask('shop'); }
-    else if(t.includes('rideshare')){ eventBus.publish('job.uber.start',{}); }
-    else if(t.includes('drive safe')){
-      eventBus.publish('hud.toast',{text:'+ $20'});
-      eventBus.publish('stats.update',{money:__app.stats.money+20});
-      __app.gameManager.commitTurn({ realm:'uls', text:'Passenger mentions “Living Hell” auditions at the Glass Garden…', decisions:[{text:'ask more'},{text:'ignore'}]});
-    }
-    else if(t.includes('dnd')){ eventBus.publish('job.dnd.start'); }
-    else if(t.includes('switch')){ __app.router.go('menu'); }
-    else { ask(a.text); } // Default case: ask the narrator
-  });
-  function ask(intent){ eventBus.publish('narrator.ask',{ realm:'uls', intent, player:__app.player, stats:__app.stats, history:__app.history }); }
-  __app.router.register('uls', ULS);
-})();
-</script>
-
-<!-- ====== UBER JOB ====== -->
-<script>
-(function(){
-  eventBus.subscribe('job.uber.start', ()=>{
-    eventBus.publish('image.request',{prompt:'rideshare car interior at night, neon city outside windows'});
-    __app.gameManager.commitTurn({ realm:'uls', text:'Pickup request accepted. Navigate to drop-off.', decisions:[{text:'drive safe'},{text:'speed to save time'}]});
-  });
-})();
-</script>
-
-<!-- ====== JOB BOARD ====== -->
-<script>
-(function(){
-  function openJobs(){
-    const w=document.createElement('div'); w.id='jobs'; w.style.cssText='position:fixed;inset:10%;background:#0b0b0b;color:#fff;border:1px solid #333;border-radius:10px;z-index:99999;padding:12px';
-    w.innerHTML=`
-      <h3>Job Board</h3>
-      <p>Pick up quick gigs for cash.</p>
-      <button id="job-uber">Rideshare ($20–$60)</button>
-      <button id="job-dnd">DND Tournament (big prize)</button>
-      <div style="margin-top:10px"><button onclick="document.getElementById('jobs').remove()">Close</button></div>`;
-    document.body.appendChild(w);
-    document.getElementById('job-uber').onclick=()=>{ eventBus.publish('job.uber.start'); w.remove(); };
-    document.getElementById('job-dnd').onclick=()=>{ eventBus.publish('job.dnd.start'); w.remove(); };
-  }
-  window.openJobs = openJobs;
-})();
-</script>
-
-<!-- ====== SYSTEMS ====== -->
-<script type="module" src="src/systems/NarrativeManager.js"></script>
-<script type="module" src="src/systems/TutorialController.js"></script>
-
 <!-- ====== UI ====== -->
-<script src="src/ui/NarrativeUI.js"></script>
-
-<!-- ====== TUTORIAL + CHARACTER CREATION ====== -->
-<div id="char">
-  <h3>Create Your Character</h3>
-  <input id="name" placeholder="Name">
-  <input id="role" placeholder="Role (anything)">
-  <label style="display:block;margin:8px 0"><input type="checkbox" id="adult"> Adult Mode</label>
-  <button onclick="createChar()">Start</button>
-</div>
-<script>
-(function(){
-  window.createChar = function(){
-    __app.player.name=name.value||'Rookie'; __app.player.role=role.value||'Free Spirit'; __app.player.adult=adult.checked;
-    // Give player some starting money for the tutorial
-    Object.assign(__app.stats, { money: 20 });
-    eventBus.publish('character.created',{player:__app.player, stats:__app.stats});
-    document.getElementById('char').remove();
-    startTutorial();
-  };
-  window.startTutorial = function(){
-    eventBus.publish('TUTORIAL_START');
-  };
-})();
-</script>
-
-<!-- ====== MENU / REALM SWITCHER ====== -->
-<script>
-(function(){
-  const Menu={
-    enter(){
-      const d=document.createElement('div'); d.id='menu';
-      d.innerHTML=`<h3>Chroma City — Realms</h3>
-      <button onclick="__app.router.go('uls');document.getElementById('menu').remove()">City</button>
-      <button onclick="__app.router.go('living-hell');document.getElementById('menu').remove()">Living Hell</button>
-      <button onclick="__app.router.go('dreamworld');document.getElementById('menu').remove()">Dreamworld</button>
-      <button onclick="__app.router.go('backrooms');document.getElementById('menu').remove()">Backrooms</button>
-      <button onclick="window.openSaveLoadMenu()">Save & Load</button>
-      <button onclick="window.toggleTranscript()">View Transcript</button>
-      <button onclick="eventBus.publish('credits.show')">Credits</button>`;
-      document.body.appendChild(d);
-    }
-  };
-  __app.router.register('menu', Menu);
-})();
-</script>
-
-<!-- ====== CREDITS ====== -->
-<script>
-(function(){
-  eventBus.subscribe('credits.show', ()=>{
-    const w=document.createElement('div'); w.style.cssText='position:fixed;inset:0;background:#000;z-index:99999';
-    w.innerHTML='<iframe src="'+ULS_CONFIG.CREDITS_URL+'" style="width:100%;height:100%;border:0"></iframe><button style="position:absolute;right:10px;top:10px" onclick="this.parentNode.remove()">Close</button>';
-    document.body.appendChild(w);
-  });
-})();
-</script>
+<script type="module" src="src/ui/shop.js"></script>
+<script type="module" src="src/ui/credits.js"></script>
+<script type="module" src="src/ui/job_board.js"></script>
 
 <!-- ====== AUTOPILOT HANDOFF ====== -->
 <script>
@@ -627,19 +393,8 @@
 </script>
 
 <!-- ====== BOOT ====== -->
-<script>
-(function boot(){
-  // preload sfx (if provided)
-  if(ULS_CONFIG.SFX_DING) document.getElementById('sfx-ding').src=ULS_CONFIG.SFX_DING;
-  if(ULS_CONFIG.SFX_BUZZ) document.getElementById('sfx-buzz').src=ULS_CONFIG.SFX_BUZZ;
-
-  // E2E test hook: if this is a test, don't show character creation
-  if (window.__E2E_TEST_MODE__) {
-    document.getElementById('char').remove();
-    __app.router.go('uls');
-  }
-})();
-</script>
+<script type="module" src="src/core/boot.js"></script>
+<script type="module" src="src/ui/character_creation.js"></script>
 
 <!-- ====== SAVE/LOAD UI ====== -->
 <script>

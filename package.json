@@ -1,0 +1,17 @@
+{
+  "name": "urban-life-simulator",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:e2e": "npx playwright test"
+  },
+  "devDependencies": {
+    "vite": "^5.2.0",
+    "puppeteer": "^22.8.0",
+    "@playwright/test": "^1.44.0"
+  }
+}

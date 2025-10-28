@@ -1,13 +1,19 @@
-/*
-Displays narrative content (text and decisions).
-*/
-const NarrativeUI = {
-  element: null,
+/**
+ * @file src/ui/NarrativeUI.js
+ * @description Displays narrative content (text and decisions).
+ */
+import { eventBus } from '../systems/bus.js';
+
+class NarrativeUI {
+  constructor() {
+    this.element = null;
+    this.init();
+  }
 
   init() {
     this.createElement();
-    global.eventBus.subscribe('NARRATIVE_LOADED', (narrative) => this.show(narrative));
-  },
+    eventBus.subscribe('NARRATIVE_LOADED', (narrative) => this.show(narrative));
+  }
 
   createElement() {
     this.element = document.createElement('div');
@@ -27,16 +33,16 @@ const NarrativeUI = {
     `;
     document.body.appendChild(this.element);
     this.hide();
-  },
+  }
 
   show(narrative) {
     this.element.style.display = 'block';
     this.render(narrative.steps[0]); // For now, just show the first step
-  },
+  }
 
   hide() {
     this.element.style.display = 'none';
-  },
+  }
 
   render(step) {
     let html = `<p>${step.text}</p>`;
@@ -58,19 +64,18 @@ const NarrativeUI = {
         this.handleDecision(decision);
       };
     });
-  },
+  }
 
   handleDecision(decision) {
       this.hide();
       if (decision.action === 'BUY_ITEM') {
-          global.eventBus.publish('ITEM_PURCHASED', decision.item);
+          eventBus.publish('ITEM_PURCHASED', decision.item);
       } else if (decision.action === 'START_ADVENTURE') {
-          global.eventBus.publish('ADVENTURE_STARTED');
+          eventBus.publish('ADVENTURE_STARTED');
       } else {
-          global.eventBus.publish('NARRATIVE_ADVANCE');
+          eventBus.publish('NARRATIVE_ADVANCE');
       }
   }
-};
+}
 
-NarrativeUI.init();
-window.global.narrativeUI = NarrativeUI;
+export const narrativeUI = new NarrativeUI();
