@@ -1,8 +1,9 @@
+/**
+ * @file src/systems/bus.js
+ * @description A simple, global event bus for pub/sub.
+ */
 
-/*
-A simple event bus for pub/sub.
-*/
-const eventBus = {
+export const eventBus = {
   events: {},
 
   subscribe(event, listener) {
@@ -19,6 +20,5 @@ const eventBus = {
   }
 };
 
-window.global = {
-  eventBus,
-};
+// Also attach to window for easy debugging and legacy access
+window.eventBus = eventBus;

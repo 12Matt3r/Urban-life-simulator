@@ -1,49 +1,56 @@
-/*
-Manages the radio iframe.
-*/
-const Radio = {
-  iframe: null,
+/**
+ * @file src/systems/Radio.js
+ * @description Manages the radio iframe communication.
+ */
+import { ULS_CONFIG } from '../config.js';
+
+class RadioManager {
+  constructor() {
+    this.iframe = null;
+    this.init();
+  }
 
   init() {
-    this.createIframe();
-    // Optional: Listen for messages back from the radio if needed
-    // window.addEventListener('message', (e) => this.onMessage(e));
-  },
-
-  createIframe() {
-    this.iframe = document.createElement('iframe');
-    this.iframe.src = 'https://websim.com/radio'; // As per the spec
-    this.iframe.style.display = 'none';
-    document.body.appendChild(this.iframe);
-  },
+    // The IframeManager now handles the creation of the radio iframe,
+    // so we just need to ensure we can communicate with it.
+    // We'll use the iframeManager to get a reference to the radio iframe if needed,
+    // but for now, we'll just send messages.
+  }
 
   post(action, payload) {
-    if (!this.iframe) return;
-    this.iframe.contentWindow.postMessage({
-      from: 'uls',
-      type: 'radio',
-      action: action,
-      payload: payload,
-    }, '*');
-  },
+    const radioIframe = document.getElementById('uls-radio-iframe');
+    if (radioIframe && radioIframe.contentWindow) {
+      radioIframe.contentWindow.postMessage({
+        target: 'uls-radio',
+        cmd: action,
+        payload: payload,
+      }, new URL(ULS_CONFIG.RADIO_IFRAME_URL).origin);
+    }
+  }
 
   // --- Public API ---
   play() {
     this.post('play');
-  },
+  }
 
   pause() {
     this.post('pause');
-  },
-
-  setStation(stationId) {
-    this.post('setStation', { stationId });
-  },
-
-  setVolume(volume) {
-    this.post('setVolume', { volume });
   }
-};
 
-Radio.init();
-window.global.radio = Radio;
+  next() {
+    this.post('next');
+  }
+
+  prev() {
+    this.post('prev');
+  }
+
+  shuffle() {
+    this.post('shuffle');
+  }
+}
+
+export const radioManager = new RadioManager();
+
+// Expose to window for easy access
+window.radioCmd = (cmd, payload) => radioManager.post(cmd, payload);

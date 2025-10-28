@@ -60,6 +60,11 @@ class TutorialController {
 // Instantiate and connect the tutorial to the game's event bus
 new TutorialController({
   onStep: (step) => {
+    // Play a sound effect for each step to enhance the experience
+    if (window.playDing) {
+      window.playDing();
+    }
+
     // For each step, commit a turn to the game history to display it
     __app.gameManager.commitTurn({
       realm: 'tutorial',
