@@ -241,29 +241,11 @@
 })();
 </script>
 
-<!-- ====== TRIPPYCAM ====== -->
-<script>
-(function(){
-  let on=false, root=document.documentElement;
-  eventBus.subscribe('fx.trippy.on',()=>{ if(on) return; on=true; root.classList.add('trippy'); });
-  eventBus.subscribe('fx.trippy.off',()=>{ on=false; root.classList.remove('trippy'); });
-  eventBus.subscribe('drink.alcohol',()=>eventBus.publish('fx.trippy.on'));
-  eventBus.subscribe('rest.sober',()=>eventBus.publish('fx.trippy.off'));
-})();
-</script>
+<!-- ====== SYSTEMS ====== -->
+<script type="module" src="src/systems/trippy_cam.js"></script>
 
-<!-- ====== CYCLE (DAY/NIGHT/WEATHER) ====== -->
-<script>
-(function(){
-  const cycle={ time:'night', weather:'clear' };
-  function apply(){
-    const prompt=(cycle.time==='night'?'nighttime ':'daytime ') + (cycle.weather==='rain'?'rainy ':'clear ') + 'Tokyo x New York neon streets, rain-slick reflections';
-    eventBus.publish('image.request',{prompt});
-  }
-  eventBus.subscribe('cycle.set',p=>{ Object.assign(cycle,p); apply(); });
-  apply();
-})();
-</script>
+<!-- ====== SYSTEMS ====== -->
+<script type="module" src="src/systems/scene_manager.js"></script>
 
 <!-- ====== HEAT / WANTED ====== -->
 <script>
@@ -347,50 +329,8 @@
 })();
 </script>
 
-<!-- ====== LIVING HELL ====== -->
-<script>
-(function(){
-  const LH = {
-    enter(){
-      __app.realm='living-hell';
-      eventBus.publish('image.request',{prompt:'reality show house interior, fishtank glass walls, cameras, dramatic lighting'});
-      __app.gameManager.commitTurn({
-        realm:'living-hell',
-        text:"You're live. Keep the crowd happy. What's your move?",
-        decisions:[{text:'truth or dare'},{text:'perform a stunt'},{text:'confess a secret'},{text:'prank someone'}],
-        hype:true
-      });
-    }
-  };
-  eventBus.subscribe('applyDecision', a=>{
-    if(__app.realm!=='living-hell') return;
-    eventBus.publish('narrator.ask',{ realm:'living-hell', mode:'audience', prompt:a.text, history:__app.history });
-  });
-  __app.router.register('living-hell', LH);
-})();
-</script>
-
-<!-- ====== DREAMWORLD ====== -->
-<script>
-(function(){
-  const DW = {
-    enter(){
-      __app.realm='dreamworld';
-      eventBus.publish('image.request',{prompt:'surreal floating islands over a sleeping city, cosmic sky, vapor haze'});
-      __app.gameManager.commitTurn({
-        realm:'dreamworld',
-        text:'Symbols whisper. Choose a path.',
-        decisions:[{text:'door of memory'},{text:'bridge of fear'},{text:'lake of reflection'}]
-      });
-    }
-  };
-  eventBus.subscribe('applyDecision', a=>{
-    if(__app.realm!=='dreamworld') return;
-    eventBus.publish('narrator.ask',{ realm:'dreamworld', prompt:a.text, history:__app.history });
-  });
-  __app.router.register('dreamworld', DW);
-})();
-</script>
+<!-- ====== SYSTEMS ====== -->
+<script type="module" src="src/systems/realms.js"></script>
 
 <!-- ====== BACKROOMS ====== -->
 <script>
