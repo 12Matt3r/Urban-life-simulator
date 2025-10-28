@@ -1,88 +1,94 @@
-/*
-Manages the tutorial sequence using a state machine.
-*/
-const TutorialController = {
-  currentState: 'IDLE',
-  states: {
-    IDLE: {
-      enter: () => {},
-    },
-    WELCOME: {
-      enter: () => {
-        global.eventBus.publish('NARRATIVE_START', 'welcome');
+/**
+ * @file src/systems/TutorialController.js
+ * @description Manages the tutorial sequence using a state machine.
+ */
+import { eventBus } from './bus.js';
+
+class TutorialController {
+  constructor() {
+    this.currentState = 'IDLE';
+    this.states = {
+      IDLE: {
+        enter: () => {},
       },
-      events: {
-        NARRATIVE_ADVANCE: 'BUY_WEAPON_PROMPT',
-      }
-    },
-    BUY_WEAPON_PROMPT: {
-      enter: () => {
-        global.eventBus.publish('NARRATIVE_START', 'buy_weapon');
+      WELCOME: {
+        enter: () => {
+          eventBus.publish('NARRATIVE_START', 'welcome');
+        },
+        events: {
+          NARRATIVE_ADVANCE: 'BUY_WEAPON_PROMPT',
+        }
       },
-      events: {
-        ITEM_PURCHASED: (item) => {
-          if (item.type === 'weapon') {
-            return 'WEAPON_PURCHASED';
+      BUY_WEAPON_PROMPT: {
+        enter: () => {
+          eventBus.publish('NARRATIVE_START', 'buy_weapon');
+        },
+        events: {
+          ITEM_PURCHASED: (item) => {
+            if (item.type === 'weapon') {
+              return 'WEAPON_PURCHASED';
+            }
           }
         }
-      }
-    },
-    WEAPON_PURCHASED: {
-      enter: () => {
-        global.eventBus.publish('NARRATIVE_START', 'weapon_purchased');
       },
-      events: {
-        NARRATIVE_ADVANCE: 'BUY_ARMOR_PROMPT',
-      }
-    },
-    BUY_ARMOR_PROMPT: {
-      enter: () => {
-        global.eventBus.publish('NARRATIVE_START', 'buy_armor');
+      WEAPON_PURCHASED: {
+        enter: () => {
+          eventBus.publish('NARRATIVE_START', 'weapon_purchased');
+        },
+        events: {
+          NARRATIVE_ADVANCE: 'BUY_ARMOR_PROMPT',
+        }
       },
-      events: {
-        ITEM_PURCHASED: (item) => {
-          if (item.type === 'armor') {
-            return 'ARMOR_PURCHASED';
+      BUY_ARMOR_PROMPT: {
+        enter: () => {
+          eventBus.publish('NARRATIVE_START', 'buy_armor');
+        },
+        events: {
+          ITEM_PURCHASED: (item) => {
+            if (item.type === 'armor') {
+              return 'ARMOR_PURCHASED';
+            }
           }
         }
-      }
-    },
-    ARMOR_PURCHASED: {
-      enter: () => {
-        global.eventBus.publish('NARRATIVE_START', 'armor_purchased');
       },
-      events: {
-        NARRATIVE_ADVANCE: 'START_ADVENTURE_PROMPT',
-      }
-    },
-    START_ADVENTURE_PROMPT: {
-      enter: () => {
-        global.eventBus.publish('NARRATIVE_START', 'start_adventure');
+      ARMOR_PURCHASED: {
+        enter: () => {
+          eventBus.publish('NARRATIVE_START', 'armor_purchased');
+        },
+        events: {
+          NARRATIVE_ADVANCE: 'START_ADVENTURE_PROMPT',
+        }
       },
-      events: {
-        ADVENTURE_STARTED: 'COMPLETED',
+      START_ADVENTURE_PROMPT: {
+        enter: () => {
+          eventBus.publish('NARRATIVE_START', 'start_adventure');
+        },
+        events: {
+          ADVENTURE_STARTED: 'COMPLETED',
+        }
+      },
+      COMPLETED: {
+        enter: () => {
+          console.log('Tutorial completed!');
+          eventBus.publish('TUTORIAL_COMPLETE');
+        }
       }
-    },
-    COMPLETED: {
-      enter: () => {
-        console.log('Tutorial completed!');
-        // Maybe publish an event here
-      }
-    }
-  },
+    };
+    this.init();
+  }
 
   init() {
-    global.eventBus.subscribe('TUTORIAL_START', () => this.transitionTo('WELCOME'));
-    global.eventBus.subscribe('NARRATIVE_ADVANCE', () => this.handleEvent('NARRATIVE_ADVANCE'));
-    global.eventBus.subscribe('ITEM_PURCHASED', (item) => this.handleEvent('ITEM_PURCHASED', item));
-    global.eventBus.subscribe('ADVENTURE_STARTED', () => this.handleEvent('ADVENTURE_STARTED'));
-  },
+    eventBus.subscribe('TUTORIAL_START', () => this.transitionTo('WELCOME'));
+    eventBus.subscribe('NARRATIVE_ADVANCE', () => this.handleEvent('NARRATIVE_ADVANCE'));
+    eventBus.subscribe('ITEM_PURCHASED', (item) => this.handleEvent('ITEM_PURCHASED', item));
+    eventBus.subscribe('ADVENTURE_STARTED', () => this.handleEvent('ADVENTURE_STARTED'));
+  }
 
   transitionTo(newState) {
     console.log(`Transitioning from ${this.currentState} to ${newState}`);
     this.currentState = newState;
     this.states[this.currentState].enter();
-  },
+  }
 
   handleEvent(eventName, data) {
     const currentStateConfig = this.states[this.currentState];
@@ -100,7 +106,6 @@ const TutorialController = {
       }
     }
   }
-};
+}
 
-TutorialController.init();
-window.global.tutorialController = TutorialController;
+export const tutorialController = new TutorialController();
