@@ -1,0 +1,454 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Urban Life Simulator — Chroma City</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  html,body{height:100%;margin:0;background:#000;color:#e8e8e8;font:14px/1.35 system-ui,Segoe UI,Roboto,Helvetica,Arial}
+  #stage{position:fixed;inset:0;display:grid;place-items:center;background:#000}
+  #stage .img{max-width:100vw;max-height:100vh;display:block}
+  #promptBar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);width:min(860px,92vw);display:flex;gap:8px;z-index:9998}
+  #promptBar input{flex:1;background:#111;border:1px solid #333;border-radius:10px;padding:12px 14px;color:#fff}
+  #promptBar button{background:#1f6feb;border:0;border-radius:10px;color:#fff;padding:12px 14px;cursor:pointer}
+  /* HUD */
+  #hud{position:fixed;left:12px;bottom:12px;z-index:9999;background:rgba(0,0,0,.55);color:#fff;padding:10px 12px;border-radius:10px;font:14px system-ui}
+  #hud .row{display:flex;gap:8px;align-items:center;margin:3px 0}
+  #hud .bar{width:120px;height:6px;background:#222;border-radius:6px;overflow:hidden}
+  #hud .bar>i{display:block;height:100%}
+  #hud .bar.health>i{background:#e74c3c}
+  #hud .bar.sanity>i{background:#3498db}
+  #hud .bar.money>i{background:#2ecc71}
+  #hud .bar.fame>i{background:#9b59b6}
+  #hud .bar.heat>i{background:#f1c40f}
+  #toasts{position:fixed;right:12px;top:12px;z-index:9999}
+  .toast{background:rgba(0,0,0,.7);color:#fff;padding:8px 10px;margin:6px;border-radius:8px}
+  /* Radio box */
+  #radio{position:fixed;left:12px;top:12px;background:rgba(0,0,0,.55);color:#fff;padding:8px;border-radius:8px;z-index:9998}
+  /* TrippyCam */
+  .trippy { filter: hue-rotate(45deg) saturate(1.3) blur(1px); animation: wob 2s infinite alternate ease-in-out; }
+  @keyframes wob { from{ transform:scale(1.0) } to{ transform:scale(1.02) } }
+  /* Note: #menu CSS is no longer needed as the menu is now a dynamic modal */
+  /* Character Create */
+  #char{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#111;color:#fff;padding:16px;border-radius:12px;z-index:99999}
+  #char input{display:block;width:280px;margin:6px 0;padding:10px;border-radius:8px;border:1px solid #333;background:#0c0c0c;color:#fff}
+  #chroma-logo{position:fixed;bottom:12px;right:12px;width:150px;z-index:10000;opacity:.8;pointer-events:none}
+</style>
+  <script type="module" crossorigin src="/Urban-life-simulator/assets/index-DIY0DE7W.js"></script>
+</head>
+<body>
+
+<!-- ====== CHROMA AWARDS LOGO ====== -->
+<img id="chroma-logo" src="https://4ltqyfmj7qxvbmbnpmlr.c.websim.com/C9DB522A-8858-4512-8255-526EC361734C.png" alt="Chroma Awards Submission" />
+
+<!-- ====== CONFIG ====== -->
+
+<!-- ====== STAGE ====== -->
+<div id="stage"><img class="img" id="stage-img" alt="" /></div>
+
+<!-- ====== INPUT BAR ====== -->
+<div id="promptBar">
+  <input id="playerInput" placeholder="Type your action… (enter to submit)" />
+  <button id="submitBtn">Send</button>
+</div>
+
+<!-- ====== HUD / TOASTS / RADIO ====== -->
+<div id="hud">
+  <div class="row">Health <span class="bar health"><i style="width:100%"></i></span></div>
+  <div class="row">Sanity <span class="bar sanity"><i style="width:100%"></i></span></div>
+  <div class="row">Money  <span class="bar money"><i style="width:0%"></i></span></div>
+  <div class="row">Fame   <span class="bar fame"><i style="width:0%"></i></span></div>
+  <div class="row">Heat   <span class="bar heat"><i style="width:0%"></i></span></div>
+</div>
+<div id="toasts"></div>
+
+<audio id="sfx-ding" src=""></audio>
+<audio id="sfx-buzz" src=""></audio>
+
+<!-- ====== CORE BUS / APP ====== -->
+<script>
+  // App state
+  window.__app = {
+    history: [],
+    stats: { health:100, sanity:100, money:0, fame:0, heat:0 },
+    player: { name:'', role:'', adult:false },
+    realm: 'uls',
+    router: {
+      routes: {},
+      register(id, api){ __app.router.routes[id]=api; },
+      go(id, params){ __app.realm=id; eventBus.publish('realm.changed',{realm:id, params}); __app.router.routes[id]?.enter?.(params||{}); }
+    },
+    gameManager: {
+      getLastEvent(){ return __app.history[__app.history.length-1]||null; },
+      commitTurn(ev){ __app.history.push(ev); eventBus.publish('turn.commit', ev); }
+    }
+  };
+</script>
+
+<!-- ====== UI ====== -->
+
+<!-- ====== RADIO ====== -->
+
+<!-- ====== CORE SYSTEMS ====== -->
+
+
+<!-- ====== COIN ENGINE + DOUBLE OR NOTHING + SFX ====== -->
+<script>
+(function(){
+  const DNU = { count:0, locked:false, season:1 };
+
+  eventBus.subscribe('coin.result', (payload) => {
+    const { success, diff, dmg, reward } = payload;
+    if(success) playDing(); else playBuzz();
+    if(reward) eventBus.publish('stats.update',{ money: __app.stats.money + reward });
+    if(dmg) eventBus.publish('stats.update',{ health: Math.max(0,__app.stats.health - dmg) });
+  });
+
+  // DoN policy: after you invoke DoN once, you may chain one more (then lock until season advance)
+  eventBus.subscribe('coin.doubleOrNothing', ()=>{
+    if(DNU.locked){ eventBus.publish('hud.toast',{text:'Double-or-Nothing unavailable (limit reached).'}); return; }
+    if(DNU.count===0){ DNU.count=1; eventBus.publish('hud.toast',{text:'Double-or-Nothing ready. Risk it? Flip again!'}); return; }
+    if(DNU.count===1){ DNU.count=2; DNU.locked=true; eventBus.publish('hud.toast',{text:'Last Double-or-Nothing allowed this season!'}); return; }
+  });
+  eventBus.subscribe('season.advance', ()=>{ DNU.count=0; DNU.locked=false; DNU.season+=1; });
+})();
+</script>
+
+<!-- ====== SAVE / TRANSCRIPT (v2) ====== -->
+<script>
+(function(){
+  const LS_RUN='uls.currentRun', LS_SLOTS='uls.saveSlots';
+  const VERSION=2;
+
+  const Save = {
+    cur:null,
+    init(){
+      const existing = JSON.parse(localStorage.getItem(LS_RUN)||'null');
+      this.cur = (existing && existing.version===VERSION) ? existing : this.new();
+      this.flush();
+    },
+    new(){
+      return {
+        version: VERSION,
+        runId: Date.now()+'-'+Math.random().toString(36).slice(2),
+        player: {},
+        stats: { health:100, sanity:100, money:0, fame:0, heat:0 },
+        realm: 'uls',
+        log: []
+      };
+    },
+    logTurn(entry){
+      entry.ts = Date.now();
+      this.cur.log.push(entry);
+      this.flush();
+      eventBus.publish('transcript.append', entry);
+    },
+    setPlayer(p){ Object.assign(this.cur.player, p); this.flush(); },
+    setStats(s){ Object.assign(this.cur.stats, s); this.flush(); },
+    setRealm(r){ this.cur.realm = r; this.flush(); },
+    flush(){ localStorage.setItem(LS_RUN, JSON.stringify(this.cur)); },
+    export(){
+      const b=new Blob([JSON.stringify(this.cur,null,2)],{type:'application/json'});
+      const u=URL.createObjectURL(b);
+      const a=document.createElement('a'); a.href=u; a.download='uls_'+this.cur.runId+'.json'; a.click();
+      setTimeout(()=>URL.revokeObjectURL(u),500);
+    },
+    import(obj){
+      if(!obj || obj.version!==VERSION || !Array.isArray(obj.log)) return false;
+      this.cur=obj; this.flush(); eventBus.publish('hud.toast',{text:'Save imported.'}); return true;
+    },
+    saveSlot(i,title){
+      const slots=JSON.parse(localStorage.getItem(LS_SLOTS)||'[]');
+      while(slots.length<3) slots.push(null);
+      slots[i]={title:title||('Save '+(i+1)), ts:Date.now(), snapshot:this.cur};
+      localStorage.setItem(LS_SLOTS, JSON.stringify(slots));
+      eventBus.publish('hud.toast',{text:`Saved to slot ${i+1}.`});
+    },
+    loadSlot(i){
+      const slots=JSON.parse(localStorage.getItem(LS_SLOTS)||'[]');
+      const s=slots[i]; if(!s) return false;
+      this.cur=s.snapshot; this.flush();
+      eventBus.publish('hud.toast',{text:`Loaded slot ${i+1}.`});
+      eventBus.publish('stats.update', this.cur.stats);
+      eventBus.publish('realm.changed', { realm:this.cur.realm });
+      eventBus.publish('transcript.reset', this.cur.log);
+      return true;
+    }
+  };
+  Save.init();
+  window.Save=Save;
+
+  // Wire into existing events
+  eventBus.subscribe('turn.commit', e=>{
+    const lastImg = (e.imagePrompt || __app?.lastImagePrompt || null);
+    Save.logTurn(Object.assign({}, e, lastImg?{imagePrompt:lastImg}:{}) );
+  });
+  eventBus.subscribe('character.created', p=>{ Save.setPlayer(p.player); Save.setStats(__app.stats); });
+  eventBus.subscribe('stats.update', s=>Save.setStats(__app.stats));
+  eventBus.subscribe('realm.changed', p=>Save.setRealm(p.realm));
+
+  // Transcript Viewer UI
+  const tray=document.createElement('div');
+  tray.id='transcript';
+  tray.style.cssText='position:fixed;right:12px;bottom:120px;width:360px;max-height:50vh;overflow:auto;background:rgba(0,0,0,.6);color:#fff;border-radius:8px;padding:8px;z-index:9999;font:12px system-ui;display:none';
+  tray.innerHTML='<b>Transcript</b><div id="transcript-body" style="margin-top:6px"></div>';
+  document.body.appendChild(tray);
+
+  function renderTranscript(list){
+    const body=document.getElementById('transcript-body'); if(!body) return;
+    body.innerHTML='';
+    (list||[]).forEach(t=>{
+      const d=document.createElement('div');
+      d.style.cssText='border-top:1px solid rgba(255,255,255,.1);padding:6px 0';
+      d.innerHTML = `
+        <div style="opacity:.7">${new Date(t.ts||Date.now()).toLocaleTimeString()} — <i>${t.realm||''}</i></div>
+        ${t.playerAction ? `<div><b>You:</b> ${t.playerAction}</div>`:''}
+        ${t.text ? `<div><b>Narrator:</b> ${t.text}</div>`:''}
+        ${t.narratorText ? `<div><b>Narrator:</b> ${t.narratorText}</div>`:''}
+        ${t.imagePrompt ? `<div style="opacity:.8">[image: ${t.imagePrompt}]</div>`:''}
+      `;
+      body.appendChild(d);
+    });
+  }
+  eventBus.subscribe('transcript.reset', list=>renderTranscript(list));
+  eventBus.subscribe('transcript.append', t=>renderTranscript(Save.cur.log));
+  renderTranscript(Save.cur.log);
+
+  window.toggleTranscript = function() {
+    const transcript = document.getElementById('transcript');
+    transcript.style.display = transcript.style.display === 'none' ? 'block' : 'none';
+  };
+})();
+</script>
+
+<!-- ====== SYSTEMS ====== -->
+
+<!-- ====== SYSTEMS ====== -->
+
+<!-- ====== HEAT / WANTED ====== -->
+<script>
+(function(){
+  eventBus.subscribe('heat.add',p=>{
+    const v = Math.min(5, __app.stats.heat + (p?.amount||1));
+    eventBus.publish('stats.update',{heat:v});
+    if(v>=3) eventBus.publish('hud.toast',{text:'Cops are watching…'});
+  });
+  eventBus.subscribe('heat.clear',()=>eventBus.publish('stats.update',{heat:0}));
+})();
+</script>
+
+<!-- ====== UI ====== -->
+
+<!-- ====== AUTOPILOT HANDOFF ====== -->
+<script>
+(function(){
+  let autoOn=false, idleTimer=null, IDLE_MS=60000;
+
+  function setAutopilot(on){
+    autoOn=!!on;
+    eventBus.publish('hud.toast',{text: autoOn?'Autopilot engaged.':'Autopilot disengaged.'});
+    eventBus.publish('autopilot.state', {on:autoOn});
+  }
+  window.__setAutopilot = setAutopilot;
+
+  function resetIdle(){
+    clearTimeout(idleTimer);
+    idleTimer=setTimeout(()=>{
+      if(!autoOn) eventBus.publish('hud.toast',{text:'Idle detected. Type "autopilot on" to let the game continue itself.'});
+    }, IDLE_MS);
+  }
+  resetIdle();
+
+  // UI command parser hook: add to your input handler
+  const origCommit = window.__commitAction;
+  window.__commitAction = function(text){
+    if(!text) return;
+    const t=text.trim().toLowerCase();
+    if(t==='autopilot on'){ setAutopilot(true); return; }
+    if(t==='autopilot off'){ setAutopilot(false); return; }
+    resetIdle();
+    origCommit(text);
+  };
+
+  // When autopilot is on, ask the narrator for a suggested action and apply it
+  eventBus.subscribe('turn.commit', ()=>{
+    if(!autoOn) return;
+    eventBus.publish('narrator.autopilot.suggestAction',{ realm:__app.realm, player:__app.player, stats:__app.stats, history:__app.history });
+  });
+  eventBus.subscribe('narrator.autopilot.suggestion', pay=>{
+    if(!autoOn || !pay?.action) return;
+    // Apply the suggested action as if player typed it
+    window.__commitAction(pay.action);
+  });
+
+  // Tiny status pill
+  const pill=document.createElement('div');
+  pill.style.cssText='position:fixed;left:12px;top:80px;background:rgba(0,0,0,.55);color:#fff;padding:6px 8px;border-radius:8px;z-index:9998;font:12px system-ui';
+  pill.textContent='Autopilot: OFF';
+  document.body.appendChild(pill);
+  eventBus.subscribe('autopilot.state', s=>{ pill.textContent='Autopilot: '+(s.on?'ON':'OFF'); });
+})();
+</script>
+
+<script>
+/** Narrator→Image Patch v2
+ * Always request an image after each narrator response.
+ * Priority:
+ *  1) payload.forceImagePrompt (already supported)
+ *  2) payload.imagePrompt (soft field, optional)
+ *  3) synthesize from (realm + text) with realm-specific style
+ */
+(function(){
+  const REALM_STYLE = {
+    'uls'         : 'nighttime neon Tokyo×NYC, rain-slick streets, cinematic, depth-of-field',
+    'living-hell' : 'reality show house, fishtank glass, dramatic studio lighting, voyeur cams',
+    'dreamworld'  : 'surreal floating islands, cosmic sky, vapor haze, symbolic motifs',
+    'backrooms'   : 'liminal yellow hallways, damp carpet, humming fluorescent lights'
+  };
+
+  function synthPrompt(realm, text){
+    const base = REALM_STYLE[realm] || 'cinematic scene, moody lighting';
+    const brief = (text||'').slice(0,160).replace(/\s+/g,' ').trim() || 'player choice moment';
+    return `${base}; context: ${brief}`;
+  }
+
+  function requestImageFrom(pay){
+    if (pay?.forceImagePrompt) {
+      eventBus.publish('image.request', { prompt: pay.forceImagePrompt });
+      return;
+    }
+    if (pay?.imagePrompt) {
+      eventBus.publish('image.request', { prompt: pay.imagePrompt });
+      return;
+    }
+    const realm = __app.realm || 'uls';
+    eventBus.publish('image.request', { prompt: synthPrompt(realm, pay?.text) });
+  }
+
+  // Wrap existing narrator.response handling
+  const onResponse = (pay)=>{
+    if (pay?.statsDelta) eventBus.publish('stats.update', Object.assign(__app.stats, pay.statsDelta));
+    requestImageFrom(pay);
+    const nq = (__app.realm==='living-hell')
+      ? "What's your move? Keep the crowd happy—hurry!"
+      : (pay?.nextQuestion || "What do you do next?");
+    const decisions = pay?.decisions || [{text:'continue'}];
+    __app.gameManager.commitTurn({ realm:__app.realm, text:nq, decisions });
+  };
+
+  // Bind safely (idempotent)
+  eventBus.subscribe('narrator.response', onResponse);
+})();
+</script>
+
+<!-- ====== TURN LOOP & INPUT HANDLER ====== -->
+<script>
+(function(){
+  const input = document.getElementById('playerInput');
+  const button= document.getElementById('submitBtn');
+
+  function commitAction(text){
+    if(!text.trim()) return;
+    // chat commands
+    const t=text.trim().toLowerCase();
+    if(t==='menu'){ __app.router.go('menu'); return; }
+    if(t==='jobs'){ window.openJobs(); return; }
+    if(t==='paw'){ eventBus.publish('monkeypaw.open'); return; }
+    if(t.startsWith('wish ')){ // wish money 500 / wish fame 5 / wish health 10
+      const parts=t.split(/\s+/); const type=parts[1]; const amt=parseInt(parts[2]||'0',10);
+      eventBus.publish('monkeypaw.wish',{type, amount:isNaN(amt)?undefined:amt}); return;
+    }
+    if(t==='flip'){ eventBus.publish('coin.flip',{difficulty:'even', reward:15, failDamage:10}); return; }
+    if(t==='double or nothing' || t==='double-or-nothing'){ eventBus.publish('coin.doubleOrNothing'); return; }
+    if(t==='drink'){ eventBus.publish('drink.alcohol'); eventBus.publish('hud.toast',{text:'You take a drink…'}); }
+    if(t.startsWith('heat')){ // heat 2
+      const amt = parseInt(t.split(' ')[1] || '1', 10);
+      eventBus.publish('heat.add', { amount: isNaN(amt) ? 1 : amt });
+      return;
+    }
+
+    __app.gameManager.commitTurn({ realm:__app.realm, playerAction:text });
+
+    // Publish a general decision event that the active realm can listen for.
+    eventBus.publish('applyDecision', { text });
+  }
+  window.__commitAction = commitAction;
+
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ window.__commitAction(input.value); input.value=''; }});
+  button.addEventListener('click', ()=>{ window.__commitAction(input.value); input.value=''; });
+
+
+  // Result sounds from coin flips (in case narrator delegates back)
+  eventBus.subscribe('coin.result', r=>{ if(r.success) playDing(); else playBuzz(); });
+})();
+</script>
+
+<!-- ====== BOOT ====== -->
+
+<!-- ====== SAVE/LOAD UI ====== -->
+<script>
+(function() {
+  let saveLoadModal = null;
+
+  function openSaveLoadMenu() {
+    if (saveLoadModal) {
+      saveLoadModal.remove();
+    }
+
+    saveLoadModal = document.createElement('div');
+    saveLoadModal.id = 'save-load-menu';
+    saveLoadModal.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#111;color:#fff;padding:16px;border-radius:12px;z-index:100000;min-width:400px;';
+
+    saveLoadModal.innerHTML = `
+      <h3>Save & Load Game</h3>
+      <p style="font-size:12px;opacity:0.7;">Save your progress to a code that you can load later.</p>
+
+      <div style="margin:12px 0;">
+        <button id="generate-code-btn">Generate Save Code</button>
+        <textarea id="save-code-textarea" style="width:100%;height:80px;margin-top:8px;background:#0c0c0c;color:#fff;border:1px solid #333;border-radius:8px;" readonly></textarea>
+      </div>
+
+      <div style="margin:12px 0;">
+        <label for="load-code-input">Paste your save code to load:</label>
+        <textarea id="load-code-input" style="width:100%;height:80px;margin-top:8px;background:#0c0c0c;color:#fff;border:1px solid #333;border-radius:8px;"></textarea>
+        <button id="load-code-btn" style="margin-top:8px;">Load from Code</button>
+      </div>
+
+      <button id="close-save-load-btn" style="margin-top:16px;">Close</button>
+    `;
+
+    document.body.appendChild(saveLoadModal);
+
+    // Event Listeners
+    document.getElementById('generate-code-btn').addEventListener('click', () => {
+      const code = storage.exportToCode();
+      if (code) {
+        document.getElementById('save-code-textarea').value = code;
+        eventBus.publish('hud.toast', { text: 'Save code generated!' });
+      } else {
+        eventBus.publish('hud.toast', { text: 'Error: Could not generate save code.' });
+      }
+    });
+
+    document.getElementById('load-code-btn').addEventListener('click', () => {
+      const code = document.getElementById('load-code-input').value;
+      if (code) {
+        if (storage.importFromCode(code)) {
+          saveLoadModal.remove(); // Close on successful load
+        }
+      } else {
+        eventBus.publish('hud.toast', { text: 'Please paste a save code.' });
+      }
+    });
+
+    document.getElementById('close-save-load-btn').addEventListener('click', () => {
+      saveLoadModal.remove();
+    });
+  }
+
+  window.openSaveLoadMenu = openSaveLoadMenu;
+})();
+</script>
+
+</body>
+</html>
